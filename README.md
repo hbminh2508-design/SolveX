@@ -1,118 +1,146 @@
-# SolveX
+Dưới đây là toàn bộ mã Markdown chuẩn cho file `README.md` của bạn. Bạn chỉ cần sao chép toàn bộ khối mã dưới đây và dán trực tiếp vào file `README.md` trên repository GitHub:
 
-Trợ lý làm bài tập chạy trên desktop: chụp đề bài trên màn hình (PDF, trang web,
-phần mềm luyện đề), gửi cho Gemini, nhận lời giải có giải thích từng bước. Có
-chế độ riêng cho bài **listening** — thu trực tiếp tiếng phát ra loa, chép
-transcript rồi trả lời câu hỏi.
+```markdown
+# 🚀 SolveX — Trợ Lý Giải Bài Tập & Listening Thông Minh Cho Desktop
+
+**SolveX** là ứng dụng desktop hỗ trợ học tập và giải bài tập tự động dựa trên mô hình trí tuệ nhân tạo Google Gemini[cite: 1, 2]. Chỉ với một phím tắt, ứng dụng cho phép bạn chụp nhanh đề bài trên màn hình hoặc thu âm bài nghe (Listening) từ loa máy tính, gửi dữ liệu đến Gemini và nhận lại lời giải chi tiết từng bước[cite: 1, 2].
 
 ---
 
-## 1. Cấu trúc
+## ✨ Tính Năng Nổi Bật
 
-```
+- 📸 **Giải bài qua ảnh chụp màn hình (`F2`):** Chụp toàn màn hình hoặc khoanh vùng linh hoạt đề bài (PDF, website, ứng dụng luyện đề...) để nhận lời giải có giải thích chi tiết[cite: 1, 2].
+- 🎧 **Chế độ Listening chuyên dụng (`F3`):** Thu âm trực tiếp luồng âm thanh phát ra từ loa (WASAPI Loopback), tự động chép transcript và trả lời câu hỏi bài nghe[cite: 1, 2].
+- 💬 **Trò chuyện & Hỏi đáp mở rộng (`Ctrl + Enter`):** Tương tác với AI ngay trong giao diện để làm rõ các bước giải chưa hiểu hoặc yêu cầu đào sâu kiến thức[cite: 1, 2].
+- ⚙️ **Tùy biến linh hoạt:** Dễ dàng tùy chỉnh Prompt hệ thống (ví dụ: chỉ đưa ra gợi ý/định hướng thay vì đáp án trực tiếp) và thay đổi linh hoạt tên mô hình Gemini (`gemini-3.5-flash-lite`, `gemini-1.5-pro`...)[cite: 1, 2].
+- 🛡️ **Bảo mật & Tiện lợi:** API key được lưu cục bộ trên máy cá nhân, giao diện hỗ trợ ẩn cửa sổ thông minh khi chụp ảnh đề bài[cite: 1, 2].
+
+---
+
+## 🛠️ Cấu Trúc Dự Án
+
+```text
 SolveX/
-├── main.py              # khởi động ứng dụng
-├── requirements.txt
-├── solvex.spec          # cấu hình đóng gói .exe
-├── build.bat            # script build tự động (Windows)
-└── solvex/
-    ├── config.py        # lưu API key, model, prompt
-    ├── capture.py       # chụp màn hình (mss + Pillow)
-    ├── audio.py         # thu tiếng loa qua WASAPI loopback
-    ├── gemini.py        # gọi Gemini API
-    ├── workers.py       # thread nền, chống đơ giao diện
-    ├── style.py         # bảng màu + stylesheet
-    └── ui.py            # giao diện chính
-```
+├── main.py              # File khởi chạy chính của ứng dụng
+├── requirements.txt     # Danh sách các thư viện phụ thuộc
+├── solvex.spec          # Cấu hình đóng gói PyInstaller (.exe)
+├── build.bat            # Script tự động hóa quá trình build trên Windows
+└── solvex/              # Thư mục mã nguồn chính
+    ├── config.py        # Quản lý cấu hình (API key, model, prompt)
+    ├── capture.py       # Xử lý chụp màn hình (mss + Pillow)
+    ├── audio.py         # Thu âm hệ thống (WASAPI loopback)
+    ├── gemini.py        # Giao tiếp với Google Gemini API
+    ├── workers.py       # Xử lý đa luồng (QThread) giữ giao diện mượt mà
+    ├── style.py         # Bảng màu và giao diện CSS/QSS
+    └── ui.py            # Thiết kế giao diện người dùng (PyQt/PySide)
+```[cite: 1, 2]
 
-## 2. Lấy API key
+---
 
-Vào **Google AI Studio** → *Get API key* → tạo key mới. Dán vào ô "API key" ở
-góc trên ứng dụng rồi bấm **Lưu**. Key được ghi vào:
+## 🔑 1. Lấy và Cấu Hình API Key
 
-- Windows: `%APPDATA%\SolveX\config.json`
-- Linux: `~/.config/SolveX/config.json`
+1. Truy cập **[Google AI Studio](https://aistudio.google.com/)** → Chọn **Get API key** → Tạo key mới[cite: 1, 2].
+2. Khởi động ứng dụng **SolveX**, dán API key vào ô **"API key"** ở góc trên cùng và bấm **Lưu**[cite: 1, 2].
 
-Đây là file văn bản thường, không mã hoá — đừng chia sẻ máy hoặc file này cho
-người khác.
+> 📌 **Lưu ý về lưu trữ:** Key được lưu dưới dạng plain text tại cấu hình hệ thống:
+> - **Windows:** `%APPDATA%\SolveX\config.json`[cite: 1, 2]
+> - **Linux:** `~/.config/SolveX/config.json`[cite: 1, 2]
+> 
+> *Vui lòng giữ bảo mật file cấu hình này và không chia sẻ cho người khác.*[cite: 1, 2]
 
-## 3. Chạy thử (chưa cần build)
+---
+
+## 🚀 2. Hướng Dẫn Chạy Từ Mã Nguồn (Source Code)
+
+Yêu cầu môi trường: **Python 3.9+**[cite: 1, 2]
 
 ```bash
+# Clone repository
+git clone [https://github.com/your-username/SolveX.git](https://github.com/your-username/SolveX.git)
+cd SolveX
+
+# Cài đặt các thư viện phụ thuộc
 pip install -r requirements.txt
+
+# Khởi chạy ứng dụng
 python main.py
-```
+```[cite: 1, 2]
 
-## 4. Build ra file .exe
+---
 
-Phải build **trên chính máy Windows** — PyInstaller không cross-compile được từ
-Linux sang Windows.
+## 📦 3. Đóng Gói Thành File Chạy `.exe` (Windows)
 
-Chép cả thư mục sang máy Windows, rồi bấm đúp `build.bat`. Hoặc gõ tay:
+> ⚠️ PyInstaller không hỗ trợ cross-compile từ Linux sang Windows. Bạn cần thực hiện quá trình build trực tiếp trên hệ điều hành **Windows**[cite: 1, 2].
 
-```bat
+### Cách 1: Sử dụng Script Build tự động
+Chỉ cần chạy file `build.bat` bằng cách đúp chuột hoặc thực thi qua CMD[cite: 1, 2].
+
+### Cách 2: Thực hiện thủ công
+```cmd
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt pyinstaller
 pyinstaller --noconfirm --clean solvex.spec
-```
+```[cite: 1, 2]
+File thực thi hoàn chỉnh sẽ nằm trong thư mục **`dist\SolveX.exe`** (chạy độc lập, không cần cài đặt Python)[cite: 1, 2].
 
-File kết quả: `dist\SolveX.exe` — chạy độc lập, không cần cài Python.
+### 🛠️ Xử lý lỗi thường gặp khi Build:
+* **Ứng dụng bật lên rồi tắt ngay:** Mở file `solvex.spec`, sửa `console=False` thành `console=True`, sau đó build lại và chạy từ Command Prompt để xem log lỗi[cite: 1, 2].
+* **Windows Defender cảnh báo virus:** Đây là hiện tượng *False Positive* phổ biến của PyInstaller[cite: 1, 2]. Bạn có thể thêm thư mục `dist` vào danh sách ngoại lệ (Exclusion), hoặc bỏ dòng `runtime_tmpdir=None` trong spec file để build dưới dạng thư mục thay vì một file duy nhất[cite: 1, 2].
 
-> **Nếu exe mở lên rồi tắt ngay:** sửa `console=False` thành `console=True`
-> trong `solvex.spec`, build lại, chạy từ cmd để đọc thông báo lỗi.
+---
 
-> **Windows Defender báo virus:** đây là false positive rất phổ biến với file
-> PyInstaller onefile. Thêm ngoại lệ cho thư mục `dist`, hoặc bỏ dòng
-> `runtime_tmpdir=None` và build dạng thư mục thay vì onefile.
+## 🎯 4. Hướng Dẫn Sử Dụng
 
-## 5. Cách dùng
+### ⌨️ Bảng Phím Tắt Khởi Động
 
-| Thao tác | Phím tắt | Việc xảy ra |
+| Thao tác | Phím tắt | Quy trình xử lý |
 |---|---|---|
-| Giải thường | `F2` | Chụp màn hình → gửi Gemini → lời giải từng bước |
-| Giải Listening | `F3` | Bấm lần 1 chụp câu hỏi + bắt đầu thu; bấm lần 2 dừng và gửi |
-| Gửi tin nhắn | `Ctrl+Enter` | Hỏi thêm về bài vừa giải |
+| **Giải bài thường** | `F2` | Chụp màn hình → Gửi dữ liệu cho Gemini → Nhận lời giải từng bước |
+| **Giải bài Listening** | `F3` | **Lần 1:** Chụp đề/câu hỏi + Bắt đầu thu âm loa<br>**Lần 2:** Dừng thu + Gửi Audio & Ảnh → Nhận transcript & lời giải |
+| **Gửi câu hỏi phụ** | `Ctrl + Enter` | Gửi tin nhắn trong ô chat để giải đáp thắc mắc thêm |[cite: 1, 2]
 
-**Nguồn chụp:** chọn màn hình cụ thể, hoặc bấm *Chọn vùng…* rồi kéo chuột quanh
-đúng phần đề bài. Chọn vùng cho kết quả tốt hơn nhiều so với chụp cả màn hình,
-vì AI không bị nhiễu bởi thanh taskbar và các cửa sổ khác.
+### 💡 Mẹo sử dụng hiệu quả:
+* **Khoanh vùng chụp đề bài:** Sử dụng tính năng *"Chọn vùng..."* thay vì chụp toàn màn hình để tránh nhiễu thông tin (như thanh Taskbar, các ứng dụng khác), giúp AI nhận diện đề bài chính xác nhất[cite: 1, 2].
+* **Ẩn cửa sổ khi chụp:** Bật tùy chọn này nếu giao diện SolveX đang đè lên nội dung bài tập trên màn hình của bạn[cite: 1, 2].
+* **Tùy chỉnh Prompt:** Bấm nút *"Hướng dẫn AI"* để thay đổi phong cách giải[cite: 1, 2]. Ví dụ: *"Chỉ đưa ra gợi ý cách làm và công thức liên quan, không cung cấp đáp án trực tiếp."*[cite: 1, 2]
 
-**Ẩn cửa sổ khi chụp:** bật tuỳ chọn này nếu SolveX đang che mất đề bài.
+---
 
-**Hướng dẫn AI:** nút này cho phép sửa prompt. Ví dụ thêm "chỉ gợi ý hướng làm,
-đừng đưa đáp án ngay" nếu bạn muốn tự làm trước rồi mới đối chiếu.
+## 🔊 5. Cấu Hình & Lưu Ý Về Thu Âm Audio (Listening)
 
-## 6. Về phần thu âm
+Mặc định, SolveX thu âm **trực tiếp từ luồng phát ra loa (Loopback)** nhằm đảm bảo chất lượng âm thanh trong trẻo, không dính tiếng ồn môi trường[cite: 1, 2].
 
-Mặc định ứng dụng thu **tiếng phát ra loa** chứ không phải tiếng micro, nên chất
-lượng audio sạch và không lẫn tiếng ồn phòng.
+* **Windows:** Sử dụng chuẩn WASAPI loopback[cite: 1, 2]. Nếu gặp lỗi không tìm thấy thiết bị, hãy mở `Control Panel` → `Sound` → tab `Recording` và bật **Stereo Mix**[cite: 1, 2].
+* **Linux:** Yêu cầu PulseAudio hoặc PipeWire (có sẵn trên Ubuntu/Debian)[cite: 1, 2]. Hệ thống tự thu qua monitor source[cite: 1, 2].
+* **macOS:** Do hạn chế của macOS, bạn cần cài đặt driver ảo như **BlackHole** và đặt làm thiết bị đầu ra (Output) mặc định[cite: 1, 2].
+* **Fallback:** Nếu không thu được tiếng loa, bạn có thể bỏ tích chọn *"Thu tiếng loa"* để chuyển sang thu qua Microphone[cite: 1, 2].
 
-- **Windows:** dùng WASAPI loopback, chạy được ngay. Nếu báo lỗi không tìm thấy
-  thiết bị loopback, bật *Stereo Mix* trong Control Panel → Sound → Recording.
-- **Linux:** cần PulseAudio hoặc PipeWire (Ubuntu có sẵn). Thu qua monitor source.
-- **macOS:** hệ điều hành không cho loopback trực tiếp, phải cài BlackHole rồi
-  đặt làm output mặc định.
+> ⏱️ **Giới hạn thời lượng:** Độ dài file âm thanh khuyến nghị cho mỗi lần gửi là **dưới 7 phút** để đảm bảo thời gian xử lý nhanh chóng và tối ưu hạn mức API[cite: 1, 2].
 
-Nếu vẫn không được, bỏ tick "Thu tiếng loa" để chuyển sang micro.
+---
 
-Giới hạn: audio gửi kèm trong request nên nên giữ dưới ~7 phút. Bài dài hơn thì
-chia thành nhiều lần thu.
+## 🤖 6. Quản Lý Mô Hình Gemini (Model Name)
 
-## 7. Tên model
+Bạn có thể thay đổi tên mô hình AI trực tiếp tại ô **Model** trên giao diện ứng dụng (mặc định: `gemini-3.5-flash-lite`)[cite: 1, 2].
 
-Ô **Model** ở góc trên để trống cho bạn sửa. Mặc định là
-`gemini-3.5-flash-lite`. Tên model Gemini thay đổi khá thường xuyên — nếu gặp
-lỗi *404 không tìm thấy model*, mở Google AI Studio xem tên chính xác hiện hành
-rồi dán lại vào ô đó. Không cần build lại exe.
+Do tên gọi các dòng mô hình của Google Gemini có thể được cập nhật theo thời gian, nếu bạn gặp lỗi **`404 Model Not Found`**, hãy truy cập [Google AI Studio](https://aistudio.google.com/) để lấy mã tên mô hình hiện hành và cập nhật vào ô này (không cần phải Rebuild file `.exe`)[cite: 1, 2].
 
-## 8. Vài lưu ý khi dùng
+---
 
-Công cụ này hợp lý nhất khi bạn dùng nó để **hiểu bài**: đọc lời giải, hỏi lại
-những chỗ chưa rõ trong ô chat, rồi tự làm lại. Prompt mặc định được viết theo
-hướng đó — luôn yêu cầu AI giải thích lý do từng bước thay vì đưa đáp án suông.
+## 📜 7. Tuyên Bố Miễn Trừ Trách Nhiệm & Khuyên Dùng
 
-AI vẫn sai, nhất là với bài toán nhiều bước và bài nghe có tạp âm. Luôn kiểm tra
-lại đáp án thay vì tin tuyệt đối. Và tất nhiên, đừng dùng trong kỳ thi hay bài
-kiểm tra có giám sát — vừa vi phạm quy chế, vừa mất luôn cái lợi ích học tập mà
-công cụ sinh ra để phục vụ.
+* **Mục đích học tập:** SolveX được phát triển với mục đích đóng vai trò là một **trợ lý học tập cá nhân**, giúp người học hiểu rõ tư duy giải toán và phương pháp làm bài[cite: 1, 2]. Khuyến khích người dùng đọc kĩ lời giải, tự đặt câu hỏi phản biện và tự giải lại bài tập[cite: 1, 2].
+* **Độ chính xác:** Mô hình AI vẫn có thể mắc sai sót (đặc biệt đối với các bài toán tính toán phức tạp hoặc file audio nhiều tạp âm)[cite: 1, 2]. Người dùng nên chủ động kiểm tra lại kết quả[cite: 1, 2].
+* **Tính liêm chính:** Vui lòng không sử dụng ứng dụng trong các kỳ thi, kiểm tra có giám sát dưới mọi hình thức[cite: 1, 2].
+
+---
+
+## 🤝 Trợ Giúp & Đóng Góp
+
+Mọi góp ý, báo lỗi (Bug Report) hoặc yêu cầu tính năng mới (Feature Request), vui lòng mở một **Issue** hoặc tạo **Pull Request** trên GitHub repository này[cite: 1, 2].
+
+---
+*Chúc bạn có trải nghiệm học tập hiệu quả cùng SolveX!*[cite: 1, 2]
+
+```
