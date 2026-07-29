@@ -166,6 +166,33 @@ QStatusBar {{ color: {MUTED}; }}
 QSplitter::handle {{ background: transparent; width: 8px; }}
 """
 
+TOOLBAR_STYLESHEET = f"""
+QWidget#ToolbarRoot {{
+    background: {PANEL};
+    border: 1px solid {BORDER};
+    border-radius: 12px;
+}}
+QPushButton#ToolbarBtn {{
+    background: {PANEL_LIGHT};
+    border: 1px solid {BORDER};
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: {TEXT};
+    font-weight: 600;
+}}
+QPushButton#ToolbarBtn:hover {{ background: #2c3140; }}
+QPushButton#ToolbarBtn:pressed {{ background: #191c24; }}
+QPushButton#ToolbarBtn:disabled {{ color: #565b6b; border-color: #262a35; }}
+QPushButton#ToolbarBtnListening {{
+    background: {RED};
+    border: 1px solid {RED};
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #2a0710;
+    font-weight: 700;
+}}
+"""
+
 # CSS cho nội dung HTML bên trong khung chat
 CHAT_CSS = f"""
 body {{ color: {TEXT}; font-family: "Segoe UI","Noto Sans",sans-serif; font-size: 13px; }}

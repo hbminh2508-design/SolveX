@@ -3,8 +3,9 @@
 import html as html_lib
 
 from PyQt6.QtCore import QPoint, QRect, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QGuiApplication, QKeySequence, QPainter, QPen, QPixmap, QShortcut
+from PyQt6.QtGui import QColor, QGuiApplication, QIcon, QKeySequence, QPainter, QPen, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -14,12 +15,14 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
     QSizePolicy,
     QSplitter,
+    QSystemTrayIcon,
     QTextBrowser,
     QVBoxLayout,
     QWidget,
@@ -45,6 +48,25 @@ def render_markdown(text: str) -> str:
         )
     except Exception:
         return "<pre>" + html_lib.escape(text) + "</pre>"
+
+
+def build_app_icon() -> QIcon:
+    """Vẽ icon tròn chữ 'S' cho tray, khỏi cần file ảnh rời."""
+    pixmap = QPixmap(64, 64)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(QColor(style.AMBER))
+    painter.drawEllipse(2, 2, 60, 60)
+    painter.setPen(QColor(style.INK))
+    font = painter.font()
+    font.setBold(True)
+    font.setPointSize(30)
+    painter.setFont(font)
+    painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, "S")
+    painter.end()
+    return QIcon(pixmap)
 
 
 # --------------------------------------------------------------------------
@@ -175,6 +197,106 @@ class PromptDialog(QDialog):
 
 
 # --------------------------------------------------------------------------
+# Bảng điều khiển thu nhỏ (nổi trên cùng, luôn hiện khi app đang chạy)
+# --------------------------------------------------------------------------
+class Toolbar(QWidget):
+    """Cửa sổ nhỏ luôn nổi trên cùng, chỉ có 3 nút: Chụp, Giải thường, Giải Listening.
+
+    Đây là mặt hiển thị mặc định của SolveX — cửa sổ đầy đủ (cài đặt, hội
+    thoại) chỉ mở khi cần, còn lại app sống ở tray icon.
+    """
+
+    def __init__(self, main_window):
+        super().__init__()
+        self.main = main_window
+        self.setObjectName("ToolbarRoot")
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Tool
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setStyleSheet(style.TOOLBAR_STYLESHEET)
+        self._drag_offset = None
+
+        row = QHBoxLayout(self)
+        row.setContentsMargins(10, 8, 10, 8)
+        row.setSpacing(8)
+
+        self.capture_btn = QPushButton("📷 Chụp")
+        self.capture_btn.setObjectName("ToolbarBtn")
+        self.capture_btn.setToolTip("Chọn vùng màn hình cần chụp")
+        self.capture_btn.clicked.connect(self.main.on_pick_region)
+        row.addWidget(self.capture_btn)
+
+        self.solve_btn = QPushButton("📝 Giải thường")
+        self.solve_btn.setObjectName("ToolbarBtn")
+        self.solve_btn.setToolTip("Chụp đề đang hiện và giải  (F2)")
+        self.solve_btn.clicked.connect(self.main.on_solve_normal)
+        row.addWidget(self.solve_btn)
+
+        self.listen_btn = QPushButton("🎧 Giải Listening")
+        self.listen_btn.setObjectName("ToolbarBtn")
+        self.listen_btn.setToolTip("Thu âm bài nghe rồi giải  (F3)")
+        self.listen_btn.clicked.connect(self.main.on_listening_clicked)
+        row.addWidget(self.listen_btn)
+
+        self.adjustSize()
+        screen = QGuiApplication.primaryScreen().availableGeometry()
+        self.move(screen.center().x() - self.width() // 2, screen.top() + 24)
+
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        menu.addAction("Cài đặt…", self.main.show_full_window)
+        menu.addSeparator()
+        menu.addAction("Ẩn xuống tray", self.hide)
+        menu.addAction("Thoát SolveX", self.main.quit_app)
+        menu.exec(event.globalPos())
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_offset = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+
+    def mouseMoveEvent(self, event):
+        if self._drag_offset is not None and event.buttons() & Qt.MouseButton.LeftButton:
+            self.move(event.globalPosition().toPoint() - self._drag_offset)
+
+    def mouseReleaseEvent(self, event):
+        self._drag_offset = None
+
+
+# --------------------------------------------------------------------------
+# Cửa sổ popup hiện đáp án sau khi giải
+# --------------------------------------------------------------------------
+class AnswerWindow(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("SolveX — Kết quả")
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
+        self.resize(640, 560)
+        self.setStyleSheet(style.STYLESHEET)
+
+        layout = QVBoxLayout(self)
+        self.browser = QTextBrowser()
+        self.browser.setObjectName("Chat")
+        self.browser.setOpenExternalLinks(True)
+        layout.addWidget(self.browser, 1)
+
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        close_btn = QPushButton("Đóng")
+        close_btn.clicked.connect(self.close)
+        buttons.addWidget(close_btn)
+        layout.addLayout(buttons)
+
+    def show_answer(self, markdown_text: str):
+        self.browser.setHtml(f"<style>{style.CHAT_CSS}</style>{render_markdown(markdown_text)}")
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+
+# --------------------------------------------------------------------------
 # Cửa sổ chính
 # --------------------------------------------------------------------------
 class MainWindow(QMainWindow):
@@ -205,6 +327,83 @@ class MainWindow(QMainWindow):
 
         self.record_timer = QTimer(self)
         self.record_timer.timeout.connect(self._tick_record)
+
+        self.answer_window = None
+        self.toolbar = Toolbar(self)
+        self._setup_tray()
+        self.toolbar.show()
+
+    # ---------------- tray icon & bảng điều khiển nổi ----------------
+    def _setup_tray(self):
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray = None
+            return
+
+        self.tray = QSystemTrayIcon(build_app_icon(), self)
+        self.tray.setToolTip("SolveX")
+
+        menu = QMenu()
+        self.toggle_toolbar_action = menu.addAction(
+            "Ẩn bảng điều khiển", self._toggle_toolbar
+        )
+        menu.addAction("Cài đặt…", self.show_full_window)
+        menu.addSeparator()
+        menu.addAction("Thoát SolveX", self.quit_app)
+        self.tray.setContextMenu(menu)
+        self.tray.activated.connect(self._on_tray_activated)
+        self.tray.show()
+
+    def _on_tray_activated(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            self._toggle_toolbar()
+
+    def _toggle_toolbar(self):
+        if self.toolbar.isVisible():
+            self.toolbar.hide()
+            if self.tray is not None:
+                self.toggle_toolbar_action.setText("Hiện bảng điều khiển")
+        else:
+            self.toolbar.show()
+            self.toolbar.raise_()
+            if self.tray is not None:
+                self.toggle_toolbar_action.setText("Ẩn bảng điều khiển")
+
+    def show_full_window(self):
+        self.show()
+        self.raise_()
+        self.activateWindow()
+
+    def quit_app(self):
+        self._shutdown()
+        QApplication.instance().quit()
+
+    def _popup_answer(self, text: str):
+        if self.answer_window is None:
+            self.answer_window = AnswerWindow()
+        self.answer_window.show_answer(text)
+
+    # ---------------- ẩn/hiện khi chụp màn hình ----------------
+    def _hide_for_capture(self) -> list:
+        """Ẩn mọi cửa sổ của SolveX đang hiện, để chúng không lọt vào ảnh chụp."""
+        hidden = []
+        if self.isVisible():
+            self.hide()
+            hidden.append(self)
+        if self.toolbar.isVisible():
+            self.toolbar.hide()
+            hidden.append(self.toolbar)
+        if hidden:
+            # Đẩy nốt các sự kiện ẩn/vẽ lại đang chờ, để màn hình thật sự
+            # cập nhật trước khi chụp — tránh chụp nhầm ảnh cửa sổ cũ.
+            for _ in range(4):
+                QApplication.processEvents()
+        return hidden
+
+    def _restore_after_capture(self, hidden: list):
+        for widget in hidden:
+            widget.show()
+        if self.toolbar in hidden:
+            self.toolbar.raise_()
 
     # ---------------- xây dựng giao diện ----------------
     def _build_ui(self):
@@ -297,7 +496,7 @@ class MainWindow(QMainWindow):
         region_row.addWidget(self.region_label, 1)
         box.addLayout(region_row)
 
-        self.hide_check = QCheckBox("Ẩn cửa sổ SolveX khi chụp")
+        self.hide_check = QCheckBox("Ẩn cửa sổ & bảng điều khiển SolveX khi chụp")
         box.addWidget(self.hide_check)
 
         self.preview = QLabel("Ảnh chụp sẽ hiện ở đây")
@@ -450,9 +649,9 @@ class MainWindow(QMainWindow):
     def on_pick_region(self):
         self.selector = RegionSelector()
         self.selector.region_selected.connect(self._on_region_selected)
-        self.hide()
+        hidden = self._hide_for_capture()
         QTimer.singleShot(220, self.selector.showFullScreen)
-        QTimer.singleShot(240, self.show)
+        QTimer.singleShot(240, lambda: self._restore_after_capture(hidden))
 
     def _on_region_selected(self, x, y, w, h):
         self.config.set("region", [x, y, w, h])
@@ -487,30 +686,32 @@ class MainWindow(QMainWindow):
     def _show_preview(self, png: bytes):
         pixmap = QPixmap()
         if pixmap.loadFromData(png, "PNG"):
+            # Xoá ảnh cũ trước rồi vẽ lại ngay, để không bị kẹt hình chụp trước
+            # trong lúc cửa sổ vừa ẩn/hiện xong.
+            self.preview.setPixmap(QPixmap())
             self.preview.setPixmap(
                 pixmap.scaled(
-                    self.preview.width() - 8,
-                    self.preview.height() - 8,
+                    max(1, self.preview.width() - 8),
+                    max(1, self.preview.height() - 8),
                     Qt.AspectRatioMode.KeepAspectRatio,
                     Qt.TransformationMode.SmoothTransformation,
                 )
             )
+            self.preview.repaint()
 
     # ---------------- giải thường ----------------
     def on_solve_normal(self):
         if self._busy():
             return
         if self.hide_check.isChecked():
-            self.hide()
-            QTimer.singleShot(300, self._solve_normal_step2)
+            hidden = self._hide_for_capture()
+            QTimer.singleShot(260, lambda: self._solve_normal_step2(hidden))
         else:
-            self._solve_normal_step2()
+            self._solve_normal_step2([])
 
-    def _solve_normal_step2(self):
+    def _solve_normal_step2(self, hidden):
         png = self._take_screenshot()
-        if self.hide_check.isChecked():
-            self.show()
-            self.raise_()
+        self._restore_after_capture(hidden)
         if png is None:
             return
 
@@ -530,9 +731,16 @@ class MainWindow(QMainWindow):
     def _start_recording(self):
         if self._busy():
             return
+        if self.hide_check.isChecked():
+            hidden = self._hide_for_capture()
+            QTimer.singleShot(260, lambda: self._begin_recording(hidden))
+        else:
+            self._begin_recording([])
 
+    def _begin_recording(self, hidden):
         # Chụp màn hình trước để lấy phần câu hỏi, rồi mới bắt đầu thu.
         self.pending_shot = self._take_screenshot()
+        self._restore_after_capture(hidden)
 
         self.record_worker = RecordWorker(
             use_loopback=self.loopback_check.isChecked(),
@@ -545,10 +753,7 @@ class MainWindow(QMainWindow):
 
         self.record_seconds = 0
         self.record_timer.start(1000)
-        self.listen_btn.setText("Dừng & giải   ·   F3")
-        self.listen_btn.setObjectName("Listening")
-        self._restyle(self.listen_btn)
-        self.solve_btn.setEnabled(False)
+        self._set_recording_ui(True)
         self.level_bar.setVisible(True)
         self.record_label.setVisible(True)
         self.record_label.setText("Đang thu 00:00")
@@ -560,6 +765,8 @@ class MainWindow(QMainWindow):
         self.record_timer.stop()
         self.listen_btn.setEnabled(False)
         self.listen_btn.setText("Đang xử lý…")
+        self.toolbar.listen_btn.setEnabled(False)
+        self.toolbar.listen_btn.setText("⏳ Đang xử lý…")
         self.status.showMessage("Đang chuẩn bị gửi audio…")
 
     def _tick_record(self):
@@ -570,13 +777,26 @@ class MainWindow(QMainWindow):
     def _on_level(self, level: float):
         self.level_bar.setValue(int(level * 100))
 
+    def _set_recording_ui(self, recording: bool):
+        """Đồng bộ nút Giải Listening ở cả sidebar và bảng điều khiển nổi."""
+        self.listen_btn.setEnabled(True)
+        self.listen_btn.setText("Dừng & giải   ·   F3" if recording else "Giải Listening   ·   F3")
+        self.listen_btn.setObjectName("Listening" if recording else "Listen")
+        self._restyle(self.listen_btn)
+        self.solve_btn.setEnabled(not recording)
+
+        self.toolbar.listen_btn.setEnabled(True)
+        self.toolbar.listen_btn.setText("⏹ Dừng & giải" if recording else "🎧 Giải Listening")
+        self.toolbar.listen_btn.setObjectName(
+            "ToolbarBtnListening" if recording else "ToolbarBtn"
+        )
+        self._restyle(self.toolbar.listen_btn)
+        self.toolbar.solve_btn.setEnabled(not recording)
+        self.toolbar.capture_btn.setEnabled(not recording)
+
     def _reset_listen_button(self):
         self.record_timer.stop()
-        self.listen_btn.setEnabled(True)
-        self.listen_btn.setText("Giải Listening   ·   F3")
-        self.listen_btn.setObjectName("Listen")
-        self._restyle(self.listen_btn)
-        self.solve_btn.setEnabled(True)
+        self._set_recording_ui(False)
         self.level_bar.setVisible(False)
         self.record_label.setVisible(False)
         self.record_worker = None
@@ -652,6 +872,8 @@ class MainWindow(QMainWindow):
         self._trim_history()
         self.send_btn.setEnabled(False)
         self.solve_btn.setEnabled(False)
+        self.toolbar.solve_btn.setEnabled(False)
+        self.toolbar.listen_btn.setEnabled(False)
         self.status.showMessage(status_text)
         self.messages.append(("pending", "…"))
         self._render_chat()
@@ -674,6 +896,7 @@ class MainWindow(QMainWindow):
         self._render_chat()
         self._unlock()
         self.status.showMessage("Xong.", 4000)
+        self._popup_answer(text)
 
     def _on_answer_failed(self, message: str):
         self._drop_pending()
@@ -688,6 +911,8 @@ class MainWindow(QMainWindow):
     def _unlock(self):
         self.send_btn.setEnabled(True)
         self.solve_btn.setEnabled(True)
+        self.toolbar.solve_btn.setEnabled(True)
+        self.toolbar.listen_btn.setEnabled(True)
         self.ask_worker = None
 
     # ---------------- hiển thị ----------------
@@ -750,8 +975,14 @@ class MainWindow(QMainWindow):
         self.status.showMessage(title, 6000)
 
     def closeEvent(self, event):
+        # Đóng cửa sổ đầy đủ chỉ ẩn nó đi — SolveX vẫn sống ở tray/bảng điều
+        # khiển nổi. Chỉ thoát thật khi chọn "Thoát SolveX" từ tray.
+        self.on_save_settings()
+        event.ignore()
+        self.hide()
+
+    def _shutdown(self):
         if self.record_worker is not None and self.record_worker.isRunning():
             self.record_worker.stop()
             self.record_worker.wait(2000)
         self.on_save_settings()
-        event.accept()
