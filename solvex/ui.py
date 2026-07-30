@@ -1,6 +1,8 @@
 """Giao diện SolveX."""
 
 import html as html_lib
+import os
+import sys
 
 from PyQt6.QtCore import QPoint, QRect, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QGuiApplication, QIcon, QKeySequence, QPainter, QPen, QPixmap, QShortcut
@@ -28,9 +30,10 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from . import capture, style
+from . import capture, fluent, style
 from .config import Config
 from .gemini import GeminiClient, audio_part, image_part, text_part
+from .version import APP_VERSION, changelog_markdown
 from .workers import AskWorker, RecordWorker
 
 try:
@@ -50,19 +53,38 @@ def render_markdown(text: str) -> str:
         return "<pre>" + html_lib.escape(text) + "</pre>"
 
 
+def _resource_path(*parts) -> str:
+    """Đường dẫn tới thư mục assets/, xử lý cả khi đã đóng gói bằng PyInstaller."""
+    base = getattr(sys, "_MEIPASS", None)
+    if base is None:
+        base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, *parts)
+
+
 def build_app_icon() -> QIcon:
-    """Vẽ icon tròn chữ 'S' cho tray, khỏi cần file ảnh rời."""
+    """Logo nhận diện của SolveX (kính lúp + tia sáng). Có file asset thì dùng
+    file, không có (ví dụ chạy từ mã nguồn thiếu assets/) thì vẽ tạm bằng code."""
+    for name in ("icon.ico", "icon.png"):
+        path = _resource_path("assets", name)
+        if os.path.exists(path):
+            icon = QIcon(path)
+            if not icon.isNull():
+                return icon
+    return _draw_fallback_icon()
+
+
+def _draw_fallback_icon() -> QIcon:
     pixmap = QPixmap(64, 64)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(QColor(style.AMBER))
-    painter.drawEllipse(2, 2, 60, 60)
+    painter.drawRoundedRect(2, 2, 60, 60, 14, 14)
     painter.setPen(QColor(style.INK))
     font = painter.font()
     font.setBold(True)
-    font.setPointSize(30)
+    font.setPointSize(26)
     painter.setFont(font)
     painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, "S")
     painter.end()
@@ -196,31 +218,46 @@ class PromptDialog(QDialog):
         self.config.save()
 
 
-# --------------------------------------------------------------------------
-# Bảng điều khiển thu nhỏ (nổi trên cùng, luôn hiện khi app đang chạy)
-# --------------------------------------------------------------------------
-class Toolbar(QWidget):
-    """Cửa sổ nhỏ luôn nổi trên cùng, chỉ có 3 nút: Chụp, Giải thường, Giải Listening.
+class CaptionButton(QPushButton):
+    """Nút kiểu nút điều khiển cửa sổ Windows 11 (Fluent caption button)."""
 
-    Đây là mặt hiển thị mặc định của SolveX — cửa sổ đầy đủ (cài đặt, hội
-    thoại) chỉ mở khi cần, còn lại app sống ở tray icon.
-    """
+    def __init__(self, text: str, tooltip: str = "", close_style: bool = False, parent=None):
+        super().__init__(text, parent)
+        self.setObjectName("CaptionBtnClose" if close_style else "CaptionBtn")
+        self.setFixedSize(34, 28)
+        self.setToolTip(tooltip)
+        self.setCursor(Qt.CursorShape.ArrowCursor)
+
+
+# --------------------------------------------------------------------------
+# Bảng điều khiển thu nhỏ — một cửa sổ thật, chỉ có 3 nút:
+# Chụp, Giải thường, Giải Listening. Thanh tiêu đề tự vẽ theo phong cách
+# Fluent/WinUI3, có thêm nút "Thu xuống khay" bên cạnh 3 nút cổ điển
+# (thu nhỏ / phóng to / đóng).
+# --------------------------------------------------------------------------
+class CompactWindow(QWidget):
+    """Mặt hiển thị mặc định của SolveX — cửa sổ đầy đủ (cài đặt, hội thoại)
+    chỉ mở khi cần, còn lại app sống ở đây + tray icon."""
 
     def __init__(self, main_window):
         super().__init__()
         self.main = main_window
-        self.setObjectName("ToolbarRoot")
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.Tool
-        )
+        self.setObjectName("CompactRoot")
+        self.setWindowTitle("SolveX")
+        self.setWindowIcon(build_app_icon())
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setStyleSheet(style.TOOLBAR_STYLESHEET)
+        self.setStyleSheet(style.COMPACT_STYLESHEET)
         self._drag_offset = None
+        self._normal_geometry = None
 
-        row = QHBoxLayout(self)
-        row.setContentsMargins(10, 8, 10, 8)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(1, 1, 1, 10)
+        outer.setSpacing(6)
+        outer.addWidget(self._build_titlebar())
+
+        row = QHBoxLayout()
+        row.setContentsMargins(10, 0, 10, 0)
         row.setSpacing(8)
 
         self.capture_btn = QPushButton("📷 Chụp")
@@ -240,21 +277,77 @@ class Toolbar(QWidget):
         self.listen_btn.setToolTip("Thu âm bài nghe rồi giải  (F3)")
         self.listen_btn.clicked.connect(self.main.on_listening_clicked)
         row.addWidget(self.listen_btn)
+        outer.addLayout(row)
 
         self.adjustSize()
         screen = QGuiApplication.primaryScreen().availableGeometry()
         self.move(screen.center().x() - self.width() // 2, screen.top() + 24)
 
+    def _build_titlebar(self) -> QWidget:
+        bar = QWidget()
+        bar.setObjectName("CompactTitleBar")
+        bar.setFixedHeight(34)
+        self._titlebar = bar
+
+        row = QHBoxLayout(bar)
+        row.setContentsMargins(10, 4, 6, 0)
+        row.setSpacing(6)
+
+        logo = QLabel()
+        logo.setPixmap(build_app_icon().pixmap(18, 18))
+        row.addWidget(logo)
+
+        title = QLabel("SolveX")
+        title.setObjectName("CompactTitle")
+        row.addWidget(title)
+        row.addStretch(1)
+
+        whats_new = CaptionButton("🆕", "Xem có gì mới")
+        whats_new.clicked.connect(self.main.show_release_notes)
+        row.addWidget(whats_new)
+
+        tray_btn = CaptionButton("🗂", "Thu xuống khay hệ thống")
+        tray_btn.clicked.connect(self.main.minimize_to_tray)
+        row.addWidget(tray_btn)
+
+        min_btn = CaptionButton("─", "Thu nhỏ")
+        min_btn.clicked.connect(self.showMinimized)
+        row.addWidget(min_btn)
+
+        self._max_btn = CaptionButton("▢", "Phóng to")
+        self._max_btn.clicked.connect(self._toggle_maximize)
+        row.addWidget(self._max_btn)
+
+        close_btn = CaptionButton("✕", "Đóng (thu xuống khay)", close_style=True)
+        close_btn.clicked.connect(self.main.minimize_to_tray)
+        row.addWidget(close_btn)
+
+        return bar
+
+    def _toggle_maximize(self):
+        if self.isMaximized():
+            self.showNormal()
+            self._max_btn.setText("▢")
+            self._max_btn.setToolTip("Phóng to")
+        else:
+            self.showMaximized()
+            self._max_btn.setText("❐")
+            self._max_btn.setToolTip("Khôi phục")
+
     def contextMenuEvent(self, event):
         menu = QMenu(self)
+        menu.addAction("Xem có gì mới…", self.main.show_release_notes)
         menu.addAction("Cài đặt…", self.main.show_full_window)
         menu.addSeparator()
-        menu.addAction("Ẩn xuống tray", self.hide)
+        menu.addAction("Thu xuống khay", self.main.minimize_to_tray)
         menu.addAction("Thoát SolveX", self.main.quit_app)
         menu.exec(event.globalPos())
 
+    def _in_titlebar(self, pos: QPoint) -> bool:
+        return self._titlebar.geometry().contains(pos)
+
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton and self._in_titlebar(event.position().toPoint()):
             self._drag_offset = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
 
     def mouseMoveEvent(self, event):
@@ -264,6 +357,24 @@ class Toolbar(QWidget):
     def mouseReleaseEvent(self, event):
         self._drag_offset = None
 
+    def mouseDoubleClickEvent(self, event):
+        if self._in_titlebar(event.position().toPoint()):
+            self._toggle_maximize()
+
+    def paintEvent(self, event):
+        # QWidget thường (khác QFrame/QDialog) không tự vẽ nền theo QSS khi
+        # kết hợp WA_TranslucentBackground — tự vẽ thẻ bo góc để chắc ăn.
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(QPen(QColor(style.BORDER), 1))
+        painter.setBrush(QColor(style.PANEL))
+        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 10, 10)
+        painter.end()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        fluent.apply_mica(self)
+
 
 # --------------------------------------------------------------------------
 # Cửa sổ popup hiện đáp án sau khi giải
@@ -272,6 +383,7 @@ class AnswerWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("SolveX — Kết quả")
+        self.setWindowIcon(build_app_icon())
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         self.resize(640, 560)
         self.setStyleSheet(style.STYLESHEET)
@@ -297,6 +409,88 @@ class AnswerWindow(QDialog):
 
 
 # --------------------------------------------------------------------------
+# Nhật ký cập nhật (Release notes)
+# --------------------------------------------------------------------------
+class ReleaseNotesDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(f"SolveX — Có gì mới (v{APP_VERSION})")
+        self.setWindowIcon(build_app_icon())
+        self.resize(560, 520)
+        self.setStyleSheet(style.STYLESHEET)
+
+        layout = QVBoxLayout(self)
+        browser = QTextBrowser()
+        browser.setObjectName("Chat")
+        browser.setOpenExternalLinks(True)
+        browser.setHtml(f"<style>{style.CHAT_CSS}</style>{render_markdown(changelog_markdown())}")
+        layout.addWidget(browser, 1)
+
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        close_btn = QPushButton("Đóng")
+        close_btn.clicked.connect(self.close)
+        buttons.addWidget(close_btn)
+        layout.addLayout(buttons)
+
+
+# --------------------------------------------------------------------------
+# Ô nhỏ báo "đang giải…" — hiện khi người dùng ở chế độ khay hệ thống nên
+# không thấy khung chat để biết ứng dụng đang xử lý.
+# --------------------------------------------------------------------------
+class BusyIndicator(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("BusyRoot")
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Tool
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setStyleSheet(style.BUSY_STYLESHEET)
+
+        row = QHBoxLayout(self)
+        row.setContentsMargins(14, 10, 14, 10)
+        row.setSpacing(10)
+
+        spinner = QProgressBar()
+        spinner.setRange(0, 0)  # indeterminate — Qt tự chạy hiệu ứng marquee
+        spinner.setFixedWidth(60)
+        spinner.setTextVisible(False)
+        row.addWidget(spinner)
+
+        self.label = QLabel("SolveX đang giải…")
+        self.label.setObjectName("BusyLabel")
+        row.addWidget(self.label)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(QPen(QColor(style.BORDER), 1))
+        painter.setBrush(QColor(style.PANEL))
+        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 10, 10)
+        painter.end()
+
+    def show_near(self, anchor: QWidget):
+        self.adjustSize()
+        if anchor is not None and anchor.isVisible():
+            point = QPoint(
+                anchor.geometry().center().x() - self.width() // 2,
+                anchor.geometry().bottom() + 10,
+            )
+        else:
+            screen = QGuiApplication.primaryScreen().availableGeometry()
+            point = QPoint(screen.center().x() - self.width() // 2, screen.top() + 24)
+        self.move(point)
+        self.show()
+        self.raise_()
+
+    def set_text(self, text: str):
+        self.label.setText(text)
+
+
+# --------------------------------------------------------------------------
 # Cửa sổ chính
 # --------------------------------------------------------------------------
 class MainWindow(QMainWindow):
@@ -318,6 +512,7 @@ class MainWindow(QMainWindow):
         self.record_seconds = 0
 
         self.setWindowTitle("SolveX")
+        self.setWindowIcon(build_app_icon())
         self.resize(1180, 760)
         self.setStyleSheet(style.STYLESHEET)
 
@@ -329,9 +524,15 @@ class MainWindow(QMainWindow):
         self.record_timer.timeout.connect(self._tick_record)
 
         self.answer_window = None
-        self.toolbar = Toolbar(self)
+        self.release_notes = None
+        self.busy_indicator = BusyIndicator()
+        self.toolbar = CompactWindow(self)
         self._setup_tray()
         self.toolbar.show()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        fluent.apply_mica(self)
 
     # ---------------- tray icon & bảng điều khiển nổi ----------------
     def _setup_tray(self):
@@ -347,6 +548,7 @@ class MainWindow(QMainWindow):
             "Ẩn bảng điều khiển", self._toggle_toolbar
         )
         menu.addAction("Cài đặt…", self.show_full_window)
+        menu.addAction("Xem có gì mới…", self.show_release_notes)
         menu.addSeparator()
         menu.addAction("Thoát SolveX", self.quit_app)
         self.tray.setContextMenu(menu)
@@ -359,25 +561,39 @@ class MainWindow(QMainWindow):
 
     def _toggle_toolbar(self):
         if self.toolbar.isVisible():
-            self.toolbar.hide()
-            if self.tray is not None:
-                self.toggle_toolbar_action.setText("Hiện bảng điều khiển")
+            self.minimize_to_tray()
         else:
             self.toolbar.show()
             self.toolbar.raise_()
             if self.tray is not None:
                 self.toggle_toolbar_action.setText("Ẩn bảng điều khiển")
 
+    def minimize_to_tray(self):
+        """Thu bảng điều khiển xuống chỉ còn icon khay hệ thống."""
+        if self.toolbar.isMaximized():
+            self.toolbar.showNormal()
+        self.toolbar.hide()
+        if self.tray is not None:
+            self.toggle_toolbar_action.setText("Hiện bảng điều khiển")
+
     def show_full_window(self):
         self.show()
         self.raise_()
         self.activateWindow()
+
+    def show_release_notes(self):
+        if self.release_notes is None:
+            self.release_notes = ReleaseNotesDialog()
+        self.release_notes.show()
+        self.release_notes.raise_()
+        self.release_notes.activateWindow()
 
     def quit_app(self):
         self._shutdown()
         QApplication.instance().quit()
 
     def _popup_answer(self, text: str):
+        self.busy_indicator.hide()
         if self.answer_window is None:
             self.answer_window = AnswerWindow()
         self.answer_window.show_answer(text)
@@ -878,6 +1094,13 @@ class MainWindow(QMainWindow):
         self.messages.append(("pending", "…"))
         self._render_chat()
 
+        # Cửa sổ đầy đủ đang ẩn (đang ở chế độ khay hệ thống) thì khung chat
+        # "đang suy nghĩ…" cũng ẩn theo — cần một ô nhỏ riêng báo cho người
+        # dùng biết SolveX đang xử lý chứ không phải bị treo.
+        if not self.isVisible():
+            self.busy_indicator.set_text(status_text)
+            self.busy_indicator.show_near(self.toolbar)
+
         self.ask_worker = AskWorker(
             self._client(), list(self.history), self.SYSTEM_INSTRUCTION
         )
@@ -907,6 +1130,12 @@ class MainWindow(QMainWindow):
         self._render_chat()
         self._unlock()
         self.status.showMessage("Có lỗi xảy ra.", 6000)
+
+        self.busy_indicator.hide()
+        if not self.isVisible() and self.tray is not None:
+            self.tray.showMessage(
+                "SolveX — có lỗi xảy ra", message, QSystemTrayIcon.MessageIcon.Warning, 6000
+            )
 
     def _unlock(self):
         self.send_btn.setEnabled(True)

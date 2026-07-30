@@ -7,7 +7,7 @@ Kết quả: dist/SolveX.exe (một file duy nhất)
 
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
-datas = []
+datas = [("assets", "assets")]
 binaries = []
 hiddenimports = [
     "cffi",
@@ -61,5 +61,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,              # thay bằng "icon.ico" nếu bạn có icon
+    icon="assets/icon.ico",
 )
