@@ -1,0 +1,24 @@
+# Python & Virtualenv
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# PyInstaller / Build
+build/
+dist/
+*.spec.bak
+
+# SolveX User Data & History
+config.json
+history/
+history_assets/
+*.log
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

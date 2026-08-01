@@ -1,189 +1,326 @@
-"""Bảng màu và stylesheet dùng chung — theo ngôn ngữ Fluent Design / WinUI3
-(Windows 11 dark mode): góc bo 6-8px, nền dạng Mica, chữ Segoe UI Variable."""
+"""Bảng màu và stylesheet dùng chung — Thiết kế 2026 WinUI 3 (Floating Sidebar & Menu Bar).
+Góc bo 12-14px mềm mại, Floating Sidebar rời mép, Fluent Dark & Light Mode.
+"""
 
-INK = "#202020"          # nền cửa sổ kiểu Mica (Windows 11 dark app background)
-PANEL = "#2c2c2c"        # nền thẻ/card (CardBackgroundFillColorDefault)
-PANEL_LIGHT = "#333333"  # nền ô nhập liệu
-BORDER = "#3d3d3d"       # viền mảnh kiểu Fluent (CardStrokeColorDefault)
-TEXT = "#f3f3f3"         # TextFillColorPrimary
-MUTED = "#9d9d9d"        # TextFillColorSecondary
-AMBER = "#f0a63c"        # màu thương hiệu SolveX (đồng bộ với logo)
-TEAL = "#3fbfb0"
-RED = "#ff6b81"
+FONT_STACK = '"Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", sans-serif'
 
-FONT_STACK = '"Segoe UI Variable Text", "Segoe UI", "Inter", "Noto Sans", sans-serif'
+DARK_PALETTE = {
+    "INK": "#18181b",
+    "PANEL": "#242427",
+    "PANEL_LIGHT": "#2d2d32",
+    "BORDER": "#38383e",
+    "BORDER_FOCUS": "#f59e0b",
+    "TEXT": "#ffffff",
+    "MUTED": "#a1a1aa",
+    "AMBER": "#f59e0b",
+    "TEAL": "#10b981",
+    "RED": "#ef4444",
+}
 
-STYLESHEET = f"""
+LIGHT_PALETTE = {
+    "INK": "#f4f4f5",
+    "PANEL": "#ffffff",
+    "PANEL_LIGHT": "#f8fafc",
+    "BORDER": "#e4e4e7",
+    "BORDER_FOCUS": "#d97706",
+    "TEXT": "#09090b",
+    "MUTED": "#71717a",
+    "AMBER": "#d97706",
+    "TEAL": "#059669",
+    "RED": "#dc2626",
+}
+
+INK = DARK_PALETTE["INK"]
+PANEL = DARK_PALETTE["PANEL"]
+PANEL_LIGHT = DARK_PALETTE["PANEL_LIGHT"]
+BORDER = DARK_PALETTE["BORDER"]
+TEXT = DARK_PALETTE["TEXT"]
+MUTED = DARK_PALETTE["MUTED"]
+AMBER = DARK_PALETTE["AMBER"]
+TEAL = DARK_PALETTE["TEAL"]
+RED = DARK_PALETTE["RED"]
+
+
+def get_palette(theme: str = "dark") -> dict:
+    return LIGHT_PALETTE if theme == "light" else DARK_PALETTE
+
+
+def get_stylesheet(theme: str = "dark") -> str:
+    p = get_palette(theme)
+    hover_bg = "#e2e8f0" if theme == "light" else "#383838"
+    pressed_bg = "#cbd5e1" if theme == "light" else "#222222"
+    disabled_fg = "#94a3b8" if theme == "light" else "#666666"
+
+    return f"""
 QWidget {{
-    background: {INK};
-    color: {TEXT};
+    background: {p['INK']};
+    color: {p['TEXT']};
     font-family: {FONT_STACK};
     font-size: 13px;
 }}
 
-QFrame#Panel {{
-    background: {PANEL};
-    border: 1px solid {BORDER};
+/* Native Menu Bar */
+QMenuBar {{
+    background: {p['INK']};
+    color: {p['TEXT']};
+    border-bottom: 1px solid {p['BORDER']};
+    padding: 2px 6px;
+}}
+QMenuBar::item {{
+    background: transparent;
+    padding: 6px 12px;
+    border-radius: 4px;
+}}
+QMenuBar::item:selected {{
+    background: {p['PANEL_LIGHT']};
+    color: {p['AMBER']};
+}}
+
+QMenu {{
+    background: {p['PANEL']};
+    color: {p['TEXT']};
+    border: 1px solid {p['BORDER']};
     border-radius: 8px;
+    padding: 4px;
+}}
+QMenu::item {{
+    padding: 6px 20px 6px 12px;
+    border-radius: 4px;
+}}
+QMenu::item:selected {{
+    background: {p['PANEL_LIGHT']};
+    color: {p['AMBER']};
+}}
+
+/* Floating Sidebar 2026 */
+QFrame#NavSidebar {{
+    background: {p['PANEL']};
+    border: 1px solid {p['BORDER']};
+    border-radius: 14px;
+    margin: 10px 4px 10px 10px;
+}}
+
+QPushButton#NavBtn {{
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    padding: 11px 14px;
+    text-align: left;
+    color: {p['MUTED']};
+    font-size: 13px;
+    font-weight: 500;
+}}
+QPushButton#NavBtn:hover {{
+    background: {p['PANEL_LIGHT']};
+    color: {p['TEXT']};
+}}
+QPushButton#NavBtn:checked {{
+    background: {"#f1f5f9" if theme == "light" else "#323238"};
+    color: {p['AMBER']};
+    font-weight: 600;
+    border-left: 3.5px solid {p['AMBER']};
+}}
+
+/* Header Toolbar */
+QFrame#HeaderBar {{
+    background: {p['PANEL']};
+    border-bottom: 1px solid {p['BORDER']};
+}}
+
+/* Panels and Cards */
+QFrame#Panel, QFrame#Card {{
+    background: {p['PANEL']};
+    border: 1px solid {p['BORDER']};
+    border-radius: 12px;
 }}
 
 QLabel#Brand {{
-    font-size: 19px;
-    font-weight: 600;
-    letter-spacing: 0.2px;
-    color: {TEXT};
+    font-size: 20px;
+    font-weight: 700;
+    color: {p['TEXT']};
 }}
 
 QLabel#Tagline {{
-    color: {MUTED};
+    color: {p['MUTED']};
     font-size: 11px;
 }}
 
 QLabel#SectionLabel {{
-    color: {MUTED};
+    color: {p['MUTED']};
     font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.8px;
-    padding-top: 4px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
 }}
 
 QLabel#Preview {{
-    background: {INK};
-    border: 1px dashed {BORDER};
+    background: {p['INK']};
+    border: 1px dashed {p['BORDER']};
     border-radius: 8px;
-    color: {MUTED};
+    color: {p['MUTED']};
 }}
 
+/* Inputs & Form Controls */
 QLineEdit, QPlainTextEdit, QComboBox, QSpinBox, QTextEdit {{
-    background: {PANEL_LIGHT};
-    border: 1px solid {BORDER};
-    border-radius: 6px;
-    padding: 6px 9px;
-    selection-background-color: {AMBER};
-    selection-color: #191204;
+    background: {p['PANEL_LIGHT']};
+    border: 1px solid {p['BORDER']};
+    border-radius: 8px;
+    padding: 7px 10px;
+    color: {p['TEXT']};
+    selection-background-color: {p['AMBER']};
+    selection-color: #ffffff;
 }}
 
 QLineEdit:focus, QPlainTextEdit:focus, QComboBox:focus, QTextEdit:focus {{
-    border: 1px solid {AMBER};
+    border: 1px solid {p['AMBER']};
 }}
 
-QComboBox::drop-down {{ border: none; width: 18px; }}
+QComboBox::drop-down {{ border: none; width: 22px; }}
 QComboBox QAbstractItemView {{
-    background: {PANEL_LIGHT};
-    border: 1px solid {BORDER};
-    selection-background-color: {AMBER};
-    selection-color: #191204;
+    background: {p['PANEL_LIGHT']};
+    border: 1px solid {p['BORDER']};
+    selection-background-color: {p['AMBER']};
+    selection-color: #ffffff;
 }}
 
+/* Buttons */
 QPushButton {{
-    background: {PANEL_LIGHT};
-    border: 1px solid {BORDER};
-    border-radius: 6px;
-    padding: 7px 14px;
-    color: {TEXT};
+    background: {p['PANEL_LIGHT']};
+    border: 1px solid {p['BORDER']};
+    border-radius: 8px;
+    padding: 8px 16px;
+    color: {p['TEXT']};
+    font-weight: 500;
 }}
-QPushButton:hover {{ background: #3a3a3a; }}
-QPushButton:pressed {{ background: #262626; }}
-QPushButton:disabled {{ color: #6b6b6b; border-color: #2c2c2c; }}
+QPushButton:hover {{ background: {hover_bg}; }}
+QPushButton:pressed {{ background: {pressed_bg}; }}
+QPushButton:disabled {{ color: {disabled_fg}; border-color: {p['BORDER']}; }}
+
+QPushButton#HeaderQuickBtn {{
+    background: {p['PANEL_LIGHT']};
+    border: 1px solid {p['BORDER']};
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+}}
+QPushButton#HeaderQuickBtn:hover {{ background: {hover_bg}; }}
+
+QPushButton#PrimaryBtn {{
+    background: {p['AMBER']};
+    color: #ffffff;
+    border: none;
+    font-weight: 600;
+}}
+QPushButton#PrimaryBtn:hover {{ background: #f59e0b; }}
 
 QPushButton#Solve {{
-    background: {AMBER};
-    color: #191204;
+    background: {p['AMBER']};
+    color: #ffffff;
     border: none;
     font-size: 14px;
-    font-weight: 600;
-    padding: 12px 14px;
-    border-radius: 8px;
+    font-weight: 700;
+    padding: 12px 16px;
+    border-radius: 10px;
 }}
-QPushButton#Solve:hover {{ background: #ffb84f; }}
-QPushButton#Solve:disabled {{ background: #4a3d22; color: #8d7a4e; }}
+QPushButton#Solve:hover {{ background: #f59e0b; }}
 
 QPushButton#Listen {{
-    background: {TEAL};
-    color: #04211e;
+    background: {p['TEAL']};
+    color: #ffffff;
     border: none;
     font-size: 14px;
-    font-weight: 600;
-    padding: 12px 14px;
-    border-radius: 8px;
+    font-weight: 700;
+    padding: 12px 16px;
+    border-radius: 10px;
 }}
-QPushButton#Listen:hover {{ background: #55d8c8; }}
-QPushButton#Listen:disabled {{ background: #22463f; color: #4e857c; }}
+QPushButton#Listen:hover {{ background: #10b981; }}
 
 QPushButton#Listening {{
-    background: {RED};
-    color: #2a0710;
+    background: {p['RED']};
+    color: #ffffff;
     border: none;
     font-size: 14px;
-    font-weight: 600;
-    padding: 12px 14px;
-    border-radius: 8px;
+    font-weight: 700;
+    padding: 12px 16px;
+    border-radius: 10px;
 }}
-QPushButton#Listening:hover {{ background: #ff8b9c; }}
+QPushButton#Listening:hover {{ background: #ef4444; }}
 
 QPushButton#Send {{
-    background: {AMBER};
-    color: #191204;
+    background: {p['AMBER']};
+    color: #ffffff;
     border: none;
-    font-weight: 600;
-    border-radius: 6px;
+    font-weight: 700;
+    border-radius: 8px;
 }}
-QPushButton#Send:hover {{ background: #ffb84f; }}
-QPushButton#Send:disabled {{ background: #4a3d22; color: #8d7a4e; }}
 
-QCheckBox {{ spacing: 7px; }}
-QCheckBox::indicator {{
-    width: 15px; height: 15px;
-    border: 1px solid {BORDER};
+QCheckBox, QRadioButton {{ spacing: 8px; color: {p['TEXT']}; }}
+QCheckBox::indicator, QRadioButton::indicator {{
+    width: 16px; height: 16px;
+    border: 1px solid {p['BORDER']};
     border-radius: 4px;
-    background: {PANEL_LIGHT};
+    background: {p['PANEL_LIGHT']};
 }}
-QCheckBox::indicator:checked {{
-    background: {AMBER};
-    border: 1px solid {AMBER};
+QRadioButton::indicator {{ border-radius: 8px; }}
+QCheckBox::indicator:checked, QRadioButton::indicator:checked {{
+    background: {p['AMBER']};
+    border: 1px solid {p['AMBER']};
 }}
 
 QProgressBar {{
-    background: {PANEL_LIGHT};
-    border: 1px solid {BORDER};
+    background: {p['PANEL_LIGHT']};
+    border: 1px solid {p['BORDER']};
     border-radius: 4px;
     height: 7px;
     text-align: center;
 }}
-QProgressBar::chunk {{ background: {AMBER}; border-radius: 3px; }}
+QProgressBar::chunk {{ background: {p['AMBER']}; border-radius: 3px; }}
 
 QTextBrowser#Chat {{
-    background: {PANEL};
-    border: 1px solid {BORDER};
-    border-radius: 8px;
-    padding: 6px;
+    background: {p['PANEL']};
+    border: 1px solid {p['BORDER']};
+    border-radius: 12px;
+    padding: 10px;
 }}
 
+QListWidget {{
+    background: {p['PANEL']};
+    border: 1px solid {p['BORDER']};
+    border-radius: 10px;
+    padding: 4px;
+}}
+QListWidget::item {{
+    padding: 8px 10px;
+    border-radius: 6px;
+    margin-bottom: 2px;
+}}
+QListWidget::item:hover {{ background: {p['PANEL_LIGHT']}; }}
+QListWidget::item:selected {{ background: {p['AMBER']}; color: #ffffff; font-weight: 600; }}
+
 QScrollBar:vertical {{
-    background: transparent; width: 9px; margin: 2px;
+    background: transparent; width: 8px; margin: 2px;
 }}
 QScrollBar::handle:vertical {{
-    background: #4a4a4a; border-radius: 4px; min-height: 28px;
+    background: {"#cbd5e1" if theme == "light" else "#444444"}; border-radius: 4px; min-height: 28px;
 }}
-QScrollBar::handle:vertical:hover {{ background: #5a5a5a; }}
+QScrollBar::handle:vertical:hover {{ background: {"#94a3b8" if theme == "light" else "#666666"}; }}
 QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
 QScrollBar::add-page, QScrollBar::sub-page {{ background: none; }}
 
-QStatusBar {{ color: {MUTED}; }}
-QSplitter::handle {{ background: transparent; width: 8px; }}
+QStatusBar {{ color: {p['MUTED']}; background: {p['INK']}; border-top: 1px solid {p['BORDER']}; }}
+QSplitter::handle {{ background: transparent; width: 6px; }}
 """
 
-# Cửa sổ nhỏ (bảng điều khiển nổi) — khung Fluent riêng + thanh tiêu đề tự vẽ.
-# Nền thẻ bo góc của CompactRoot/BusyRoot do paintEvent() trong ui.py tự vẽ
-# (QWidget thường không tự sơn nền theo QSS khi dùng WA_TranslucentBackground),
-# nên ở đây chỉ còn style cho các control con.
-COMPACT_STYLESHEET = f"""
+
+def get_compact_stylesheet(theme: str = "dark") -> str:
+    p = get_palette(theme)
+    return f"""
 QWidget#CompactTitleBar {{
     background: transparent;
     border: none;
 }}
 QLabel#CompactTitle {{
-    color: {MUTED};
+    color: {p['MUTED']};
     font-size: 12px;
     font-weight: 600;
 }}
@@ -191,62 +328,60 @@ QPushButton#CaptionBtn, QPushButton#CaptionBtnClose {{
     background: transparent;
     border: none;
     border-radius: 6px;
-    color: {TEXT};
+    color: {p['TEXT']};
     font-size: 13px;
     padding: 0px;
 }}
-QPushButton#CaptionBtn:hover {{ background: #3f3f3f; }}
-QPushButton#CaptionBtn:pressed {{ background: #4a4a4a; }}
-QPushButton#CaptionBtnClose:hover {{ background: {RED}; color: #2a0710; }}
-QPushButton#CaptionBtnClose:pressed {{ background: #d64b60; color: #2a0710; }}
+QPushButton#CaptionBtn:hover {{ background: {"#e2e8f0" if theme == "light" else "#383838"}; }}
+QPushButton#CaptionBtnClose:hover {{ background: {p['RED']}; color: #ffffff; }}
 
 QPushButton#ToolbarBtn {{
-    background: {PANEL_LIGHT};
-    border: 1px solid {BORDER};
+    background: {p['PANEL_LIGHT']};
+    border: 1px solid {p['BORDER']};
     border-radius: 8px;
     padding: 8px 12px;
-    color: {TEXT};
+    color: {p['TEXT']};
     font-weight: 600;
 }}
-QPushButton#ToolbarBtn:hover {{ background: #3a3a3a; }}
-QPushButton#ToolbarBtn:pressed {{ background: #262626; }}
-QPushButton#ToolbarBtn:disabled {{ color: #6b6b6b; border-color: #2c2c2c; }}
-QPushButton#ToolbarBtnListening {{
-    background: {RED};
-    border: 1px solid {RED};
-    border-radius: 8px;
-    padding: 8px 12px;
-    color: #2a0710;
-    font-weight: 700;
-}}
+QPushButton#ToolbarBtn:hover {{ background: {"#e2e8f0" if theme == "light" else "#3a3a3a"}; }}
 """
 
-# Ô báo "đang giải…" nổi góc màn hình khi ở chế độ khay hệ thống.
-# Nền thẻ bo góc của BusyRoot do paintEvent() tự vẽ, xem ghi chú ở trên.
-BUSY_STYLESHEET = f"""
+
+def get_busy_stylesheet(theme: str = "dark") -> str:
+    p = get_palette(theme)
+    return f"""
 QLabel#BusyLabel {{
-    color: {TEXT};
+    color: {p['TEXT']};
     font-size: 12px;
     font-weight: 600;
 }}
 QProgressBar {{
-    background: {PANEL_LIGHT};
-    border: 1px solid {BORDER};
+    background: {p['PANEL_LIGHT']};
+    border: 1px solid {p['BORDER']};
     border-radius: 4px;
     height: 7px;
 }}
-QProgressBar::chunk {{ background: {AMBER}; border-radius: 3px; }}
+QProgressBar::chunk {{ background: {p['AMBER']}; border-radius: 3px; }}
 """
 
-# CSS cho nội dung HTML bên trong khung chat
-CHAT_CSS = f"""
-body {{ color: {TEXT}; font-family: {FONT_STACK}; font-size: 13px; }}
-pre {{ background: {INK}; border: 1px solid {BORDER}; border-radius: 6px;
-      padding: 8px; font-family: Consolas, "DejaVu Sans Mono", monospace; }}
-code {{ background: {INK}; font-family: Consolas, "DejaVu Sans Mono", monospace; }}
-table {{ border-collapse: collapse; }}
-th, td {{ border: 1px solid {BORDER}; padding: 5px 9px; }}
-th {{ background: {PANEL_LIGHT}; }}
-h1, h2, h3 {{ color: {AMBER}; }}
-a {{ color: {TEAL}; }}
+
+def get_chat_css(theme: str = "dark") -> str:
+    p = get_palette(theme)
+    return f"""
+body {{ color: {p['TEXT']}; font-family: {FONT_STACK}; font-size: 13px; line-height: 1.5; }}
+pre {{ background: {p['INK']}; border: 1px solid {p['BORDER']}; border-radius: 6px;
+      padding: 10px; font-family: Consolas, "DejaVu Sans Mono", monospace; }}
+code {{ background: {p['INK']}; padding: 2px 4px; border-radius: 4px; font-family: Consolas, monospace; }}
+table {{ border-collapse: collapse; width: 100%; margin: 8px 0; }}
+th, td {{ border: 1px solid {p['BORDER']}; padding: 6px 10px; text-align: left; }}
+th {{ background: {p['PANEL_LIGHT']}; color: {p['AMBER']}; }}
+h1, h2, h3 {{ color: {p['AMBER']}; margin-top: 12px; margin-bottom: 6px; }}
+a {{ color: {p['TEAL']}; text-decoration: none; }}
+a:hover {{ text-decoration: underline; }}
+.question-img {{ border: 1px solid {p['BORDER']}; border-radius: 8px; margin: 8px 0; max-width: 100%; }}
 """
+
+STYLESHEET = get_stylesheet("dark")
+COMPACT_STYLESHEET = get_compact_stylesheet("dark")
+BUSY_STYLESHEET = get_busy_stylesheet("dark")
+CHAT_CSS = get_chat_css("dark")

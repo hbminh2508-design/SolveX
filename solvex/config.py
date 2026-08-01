@@ -45,6 +45,9 @@ DEFAULTS = {
     "use_loopback": True,            # thu tiếng loa (True) hay tiếng mic (False)
     "max_audio_seconds": 300,
     "temperature": 0.2,
+    "language": "vi",                # "vi" hoặc "en"
+    "startup_mode": "compact",       # "full", "compact", hoặc "tray"
+    "theme": "dark",                 # "dark" hoặc "light"
 }
 
 
@@ -78,7 +81,6 @@ class Config:
                     if key in DEFAULTS:
                         self.data[key] = value
         except (OSError, json.JSONDecodeError):
-            # Cấu hình hỏng thì dùng mặc định, không làm sập app.
             self.data = dict(DEFAULTS)
 
     def save(self):

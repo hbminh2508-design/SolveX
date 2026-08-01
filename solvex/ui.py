@@ -1,29 +1,39 @@
-"""Giao diện SolveX."""
+"""Giao diện SolveX v1.3.0 — Thiết kế 2026 (Floating Sidebar & Menu Bar), Đa ngôn ngữ (VI/EN),
+Tối ưu Anti-stuttering, Sửa triệt để ẩn cửa sổ khi chụp, GitHub Update (hbminh2508-design/SolveX),
+Vector Icons 100% không dùng emoji.
+"""
 
 import html as html_lib
 import os
 import sys
+from pathlib import Path
 
 from PyQt6.QtCore import QPoint, QRect, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QGuiApplication, QIcon, QKeySequence, QPainter, QPen, QPixmap, QShortcut
+from PyQt6.QtGui import QAction, QColor, QGuiApplication, QIcon, QKeySequence, QPainter, QPen, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
+    QButtonGroup,
     QCheckBox,
     QComboBox,
     QDialog,
-    QDialogButtonBox,
     QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QMainWindow,
     QMenu,
+    QMenuBar,
     QMessageBox,
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
+    QRadioButton,
+    QScrollArea,
     QSizePolicy,
     QSplitter,
+    QStackedWidget,
     QSystemTrayIcon,
     QTextBrowser,
     QVBoxLayout,
@@ -33,8 +43,12 @@ from PyQt6.QtWidgets import (
 from . import capture, fluent, style
 from .config import Config
 from .gemini import GeminiClient, audio_part, image_part, text_part
+from .history import HistoryManager
+from .i18n import i18n
+from .icons import IconFactory
+from .updater import BuildExeWorker, CheckUpdateWorker
 from .version import APP_VERSION, changelog_markdown
-from .workers import AskWorker, RecordWorker
+from .workers import AskWorker, CaptureWorker, RecordWorker, TestApiWorker
 
 try:
     import markdown as md_lib
@@ -54,7 +68,6 @@ def render_markdown(text: str) -> str:
 
 
 def _resource_path(*parts) -> str:
-    """Đường dẫn tới thư mục assets/, xử lý cả khi đã đóng gói bằng PyInstaller."""
     base = getattr(sys, "_MEIPASS", None)
     if base is None:
         base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -62,8 +75,6 @@ def _resource_path(*parts) -> str:
 
 
 def build_app_icon() -> QIcon:
-    """Logo nhận diện của SolveX (kính lúp + tia sáng). Có file asset thì dùng
-    file, không có (ví dụ chạy từ mã nguồn thiếu assets/) thì vẽ tạm bằng code."""
     for name in ("icon.ico", "icon.png"):
         path = _resource_path("assets", name)
         if os.path.exists(path):
@@ -81,7 +92,7 @@ def _draw_fallback_icon() -> QIcon:
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(QColor(style.AMBER))
     painter.drawRoundedRect(2, 2, 60, 60, 14, 14)
-    painter.setPen(QColor(style.INK))
+    painter.setPen(QColor("#ffffff"))
     font = painter.font()
     font.setBold(True)
     font.setPointSize(26)
@@ -92,12 +103,10 @@ def _draw_fallback_icon() -> QIcon:
 
 
 # --------------------------------------------------------------------------
-# Chọn vùng màn hình
+# Region Selector Overlay
 # --------------------------------------------------------------------------
 class RegionSelector(QWidget):
-    """Lớp phủ toàn màn hình cho phép kéo chọn một vùng chữ nhật."""
-
-    region_selected = pyqtSignal(int, int, int, int)  # toạ độ pixel vật lý
+    region_selected = pyqtSignal(int, int, int, int)
 
     def __init__(self):
         super().__init__()
@@ -117,9 +126,8 @@ class RegionSelector(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor(10, 12, 17, 140))
-
-        hint = "Kéo chuột để chọn vùng đề bài  ·  Esc để huỷ"
-        painter.setPen(QColor(style.TEXT))
+        hint = i18n.t("st_monitor_region") + "  ·  Esc to Cancel"
+        painter.setPen(QColor("#ffffff"))
         painter.drawText(
             self.rect().adjusted(0, 28, 0, 0),
             Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter,
@@ -158,11 +166,8 @@ class RegionSelector(QWidget):
         self.dragging = False
         rect = QRect(self.origin, self.current).normalized()
         self.close()
-
         if rect.width() < 5 or rect.height() < 5:
             return
-
-        # Qt dùng pixel logic, mss dùng pixel vật lý -> nhân theo tỉ lệ DPI.
         ratio = self.devicePixelRatioF()
         offset = self.geometry().topLeft()
         x = int((rect.x() + offset.x()) * ratio)
@@ -176,125 +181,101 @@ class RegionSelector(QWidget):
             self.close()
 
 
-# --------------------------------------------------------------------------
-# Hộp thoại chỉnh prompt
-# --------------------------------------------------------------------------
-class PromptDialog(QDialog):
-    def __init__(self, config: Config, parent=None):
-        super().__init__(parent)
-        self.config = config
-        self.setWindowTitle("Chỉnh hướng dẫn cho AI")
-        self.resize(640, 540)
-
-        layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("Hướng dẫn cho nút <b>Giải thường</b>:"))
-        self.normal = QPlainTextEdit(config.get("prompt_normal"))
-        layout.addWidget(self.normal)
-
-        layout.addWidget(QLabel("Hướng dẫn cho nút <b>Giải Listening</b>:"))
-        self.listening = QPlainTextEdit(config.get("prompt_listening"))
-        layout.addWidget(self.listening)
-
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok
-            | QDialogButtonBox.StandardButton.Cancel
-            | QDialogButtonBox.StandardButton.RestoreDefaults
-        )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        buttons.button(QDialogButtonBox.StandardButton.RestoreDefaults).clicked.connect(
-            self.restore
-        )
-        layout.addWidget(buttons)
-
-    def restore(self):
-        self.config.reset_prompts()
-        self.normal.setPlainText(self.config.get("prompt_normal"))
-        self.listening.setPlainText(self.config.get("prompt_listening"))
-
-    def apply(self):
-        self.config.set("prompt_normal", self.normal.toPlainText().strip())
-        self.config.set("prompt_listening", self.listening.toPlainText().strip())
-        self.config.save()
-
-
 class CaptionButton(QPushButton):
-    """Nút kiểu nút điều khiển cửa sổ Windows 11 (Fluent caption button)."""
-
-    def __init__(self, text: str, tooltip: str = "", close_style: bool = False, parent=None):
-        super().__init__(text, parent)
+    def __init__(self, icon_name: str, tooltip: str = "", close_style: bool = False, parent=None):
+        super().__init__(parent)
         self.setObjectName("CaptionBtnClose" if close_style else "CaptionBtn")
         self.setFixedSize(34, 28)
+        color = style.RED if close_style else style.TEXT
+        self.setIcon(IconFactory.draw_icon(icon_name, color, 14))
         self.setToolTip(tooltip)
         self.setCursor(Qt.CursorShape.ArrowCursor)
 
 
 # --------------------------------------------------------------------------
-# Bảng điều khiển thu nhỏ — một cửa sổ thật, chỉ có 3 nút:
-# Chụp, Giải thường, Giải Listening. Thanh tiêu đề tự vẽ theo phong cách
-# Fluent/WinUI3, có thêm nút "Thu xuống khay" bên cạnh 3 nút cổ điển
-# (thu nhỏ / phóng to / đóng).
+# Compact Top Bar Window (100% Vector Icons)
 # --------------------------------------------------------------------------
 class CompactWindow(QWidget):
-    """Mặt hiển thị mặc định của SolveX — cửa sổ đầy đủ (cài đặt, hội thoại)
-    chỉ mở khi cần, còn lại app sống ở đây + tray icon."""
-
     def __init__(self, main_window):
         super().__init__()
         self.main = main_window
         self.setObjectName("CompactRoot")
         self.setWindowTitle("SolveX")
         self.setWindowIcon(build_app_icon())
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setStyleSheet(style.COMPACT_STYLESHEET)
+        self.setStyleSheet(style.get_compact_stylesheet(self.main.config.get("theme", "dark")))
         self._drag_offset = None
-        self._normal_geometry = None
 
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(1, 1, 1, 10)
+        outer.setContentsMargins(2, 2, 2, 8)
         outer.setSpacing(6)
         outer.addWidget(self._build_titlebar())
 
         row = QHBoxLayout()
-        row.setContentsMargins(10, 0, 10, 0)
-        row.setSpacing(8)
+        row.setContentsMargins(8, 0, 8, 0)
+        row.setSpacing(6)
 
-        self.capture_btn = QPushButton("📷 Chụp")
+        self.capture_btn = QPushButton(i18n.t("btn_capture"))
+        self.capture_btn.setIcon(IconFactory.draw_icon("camera", style.TEXT, 16))
         self.capture_btn.setObjectName("ToolbarBtn")
-        self.capture_btn.setToolTip("Chọn vùng màn hình cần chụp")
+        self.capture_btn.setToolTip(i18n.t("tip_capture"))
         self.capture_btn.clicked.connect(self.main.on_pick_region)
         row.addWidget(self.capture_btn)
 
-        self.solve_btn = QPushButton("📝 Giải thường")
+        self.solve_btn = QPushButton(i18n.t("btn_solve_normal"))
+        self.solve_btn.setIcon(IconFactory.draw_icon("solve", style.AMBER, 16))
         self.solve_btn.setObjectName("ToolbarBtn")
-        self.solve_btn.setToolTip("Chụp đề đang hiện và giải  (F2)")
+        self.solve_btn.setToolTip(i18n.t("tip_solve"))
         self.solve_btn.clicked.connect(self.main.on_solve_normal)
         row.addWidget(self.solve_btn)
 
-        self.listen_btn = QPushButton("🎧 Giải Listening")
+        self.listen_btn = QPushButton(i18n.t("btn_solve_listening"))
+        self.listen_btn.setIcon(IconFactory.draw_icon("headphones", style.TEAL, 16))
         self.listen_btn.setObjectName("ToolbarBtn")
-        self.listen_btn.setToolTip("Thu âm bài nghe rồi giải  (F3)")
+        self.listen_btn.setToolTip(i18n.t("tip_listen"))
         self.listen_btn.clicked.connect(self.main.on_listening_clicked)
         row.addWidget(self.listen_btn)
-        outer.addLayout(row)
 
+        self.history_btn = QPushButton()
+        self.history_btn.setIcon(IconFactory.draw_icon("history", style.TEXT, 16))
+        self.history_btn.setObjectName("ToolbarBtn")
+        self.history_btn.setToolTip(i18n.t("tip_history"))
+        self.history_btn.clicked.connect(lambda: self.main.show_tab("history"))
+        row.addWidget(self.history_btn)
+
+        self.settings_btn = QPushButton()
+        self.settings_btn.setIcon(IconFactory.draw_icon("settings", style.TEXT, 16))
+        self.settings_btn.setObjectName("ToolbarBtn")
+        self.settings_btn.setToolTip(i18n.t("tip_settings"))
+        self.settings_btn.clicked.connect(lambda: self.main.show_tab("settings"))
+        row.addWidget(self.settings_btn)
+
+        outer.addLayout(row)
         self.adjustSize()
+
         screen = QGuiApplication.primaryScreen().availableGeometry()
-        self.move(screen.center().x() - self.width() // 2, screen.top() + 24)
+        self.move(screen.center().x() - self.width() // 2, screen.top() + 20)
+        i18n.language_changed.connect(self.update_strings)
+
+    def update_strings(self):
+        self.capture_btn.setText(i18n.t("btn_capture"))
+        self.solve_btn.setText(i18n.t("btn_solve_normal"))
+        if not (self.main.record_worker and self.main.record_worker.isRunning()):
+            self.listen_btn.setText(i18n.t("btn_solve_listening"))
 
     def _build_titlebar(self) -> QWidget:
         bar = QWidget()
         bar.setObjectName("CompactTitleBar")
-        bar.setFixedHeight(34)
+        bar.setFixedHeight(30)
         self._titlebar = bar
 
         row = QHBoxLayout(bar)
-        row.setContentsMargins(10, 4, 6, 0)
-        row.setSpacing(6)
+        row.setContentsMargins(8, 2, 4, 0)
+        row.setSpacing(4)
 
         logo = QLabel()
-        logo.setPixmap(build_app_icon().pixmap(18, 18))
+        logo.setPixmap(build_app_icon().pixmap(16, 16))
         row.addWidget(logo)
 
         title = QLabel("SolveX")
@@ -302,44 +283,30 @@ class CompactWindow(QWidget):
         row.addWidget(title)
         row.addStretch(1)
 
-        whats_new = CaptionButton("🆕", "Xem có gì mới")
+        whats_new = CaptionButton("spark", i18n.t("tip_changelog"))
         whats_new.clicked.connect(self.main.show_release_notes)
         row.addWidget(whats_new)
 
-        tray_btn = CaptionButton("🗂", "Thu xuống khay hệ thống")
+        tray_btn = CaptionButton("tray", i18n.t("tip_tray"))
         tray_btn.clicked.connect(self.main.minimize_to_tray)
         row.addWidget(tray_btn)
 
-        min_btn = CaptionButton("─", "Thu nhỏ")
+        min_btn = CaptionButton("minimize", i18n.t("btn_hide"))
         min_btn.clicked.connect(self.showMinimized)
         row.addWidget(min_btn)
 
-        self._max_btn = CaptionButton("▢", "Phóng to")
-        self._max_btn.clicked.connect(self._toggle_maximize)
-        row.addWidget(self._max_btn)
-
-        close_btn = CaptionButton("✕", "Đóng (thu xuống khay)", close_style=True)
+        close_btn = CaptionButton("close", i18n.t("tip_tray"), close_style=True)
         close_btn.clicked.connect(self.main.minimize_to_tray)
         row.addWidget(close_btn)
 
         return bar
 
-    def _toggle_maximize(self):
-        if self.isMaximized():
-            self.showNormal()
-            self._max_btn.setText("▢")
-            self._max_btn.setToolTip("Phóng to")
-        else:
-            self.showMaximized()
-            self._max_btn.setText("❐")
-            self._max_btn.setToolTip("Khôi phục")
-
     def contextMenuEvent(self, event):
         menu = QMenu(self)
-        menu.addAction("Xem có gì mới…", self.main.show_release_notes)
-        menu.addAction("Cài đặt…", self.main.show_full_window)
+        menu.addAction(i18n.t("nav_changelog"), self.main.show_release_notes)
+        menu.addAction(i18n.t("nav_settings"), lambda: self.main.show_tab("settings"))
         menu.addSeparator()
-        menu.addAction("Thu xuống khay", self.main.minimize_to_tray)
+        menu.addAction(i18n.t("tip_tray"), self.main.minimize_to_tray)
         menu.addAction("Thoát SolveX", self.main.quit_app)
         menu.exec(event.globalPos())
 
@@ -357,17 +324,12 @@ class CompactWindow(QWidget):
     def mouseReleaseEvent(self, event):
         self._drag_offset = None
 
-    def mouseDoubleClickEvent(self, event):
-        if self._in_titlebar(event.position().toPoint()):
-            self._toggle_maximize()
-
     def paintEvent(self, event):
-        # QWidget thường (khác QFrame/QDialog) không tự vẽ nền theo QSS khi
-        # kết hợp WA_TranslucentBackground — tự vẽ thẻ bo góc để chắc ăn.
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(QPen(QColor(style.BORDER), 1))
-        painter.setBrush(QColor(style.PANEL))
+        p = style.get_palette(self.main.config.get("theme", "dark"))
+        painter.setPen(QPen(QColor(p["BORDER"]), 1))
+        painter.setBrush(QColor(p["PANEL"]))
         painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 10, 10)
         painter.end()
 
@@ -377,16 +339,15 @@ class CompactWindow(QWidget):
 
 
 # --------------------------------------------------------------------------
-# Cửa sổ popup hiện đáp án sau khi giải
+# Answer Window & Busy Indicator
 # --------------------------------------------------------------------------
 class AnswerWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("SolveX — Kết quả")
+        self.setWindowTitle("SolveX — Đáp án")
         self.setWindowIcon(build_app_icon())
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         self.resize(640, 560)
-        self.setStyleSheet(style.STYLESHEET)
 
         layout = QVBoxLayout(self)
         self.browser = QTextBrowser()
@@ -396,51 +357,23 @@ class AnswerWindow(QDialog):
 
         buttons = QHBoxLayout()
         buttons.addStretch(1)
-        close_btn = QPushButton("Đóng")
+        close_btn = QPushButton(i18n.t("btn_close"))
         close_btn.clicked.connect(self.close)
         buttons.addWidget(close_btn)
         layout.addLayout(buttons)
 
-    def show_answer(self, markdown_text: str):
-        self.browser.setHtml(f"<style>{style.CHAT_CSS}</style>{render_markdown(markdown_text)}")
+    def show_answer(self, markdown_text: str, theme: str = "dark"):
+        self.setStyleSheet(style.get_stylesheet(theme))
+        self.browser.setHtml(f"<style>{style.get_chat_css(theme)}</style>{render_markdown(markdown_text)}")
         self.show()
         self.raise_()
         self.activateWindow()
 
 
-# --------------------------------------------------------------------------
-# Nhật ký cập nhật (Release notes)
-# --------------------------------------------------------------------------
-class ReleaseNotesDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle(f"SolveX — Có gì mới (v{APP_VERSION})")
-        self.setWindowIcon(build_app_icon())
-        self.resize(560, 520)
-        self.setStyleSheet(style.STYLESHEET)
-
-        layout = QVBoxLayout(self)
-        browser = QTextBrowser()
-        browser.setObjectName("Chat")
-        browser.setOpenExternalLinks(True)
-        browser.setHtml(f"<style>{style.CHAT_CSS}</style>{render_markdown(changelog_markdown())}")
-        layout.addWidget(browser, 1)
-
-        buttons = QHBoxLayout()
-        buttons.addStretch(1)
-        close_btn = QPushButton("Đóng")
-        close_btn.clicked.connect(self.close)
-        buttons.addWidget(close_btn)
-        layout.addLayout(buttons)
-
-
-# --------------------------------------------------------------------------
-# Ô nhỏ báo "đang giải…" — hiện khi người dùng ở chế độ khay hệ thống nên
-# không thấy khung chat để biết ứng dụng đang xử lý.
-# --------------------------------------------------------------------------
 class BusyIndicator(QWidget):
-    def __init__(self):
+    def __init__(self, theme: str = "dark"):
         super().__init__()
+        self.theme = theme
         self.setObjectName("BusyRoot")
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -448,27 +381,28 @@ class BusyIndicator(QWidget):
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setStyleSheet(style.BUSY_STYLESHEET)
+        self.setStyleSheet(style.get_busy_stylesheet(theme))
 
         row = QHBoxLayout(self)
         row.setContentsMargins(14, 10, 14, 10)
         row.setSpacing(10)
 
         spinner = QProgressBar()
-        spinner.setRange(0, 0)  # indeterminate — Qt tự chạy hiệu ứng marquee
+        spinner.setRange(0, 0)
         spinner.setFixedWidth(60)
         spinner.setTextVisible(False)
         row.addWidget(spinner)
 
-        self.label = QLabel("SolveX đang giải…")
+        self.label = QLabel(i18n.t("chat_thinking"))
         self.label.setObjectName("BusyLabel")
         row.addWidget(self.label)
 
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(QPen(QColor(style.BORDER), 1))
-        painter.setBrush(QColor(style.PANEL))
+        p = style.get_palette(self.theme)
+        painter.setPen(QPen(QColor(p["BORDER"]), 1))
+        painter.setBrush(QColor(p["PANEL"]))
         painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 10, 10)
         painter.end()
 
@@ -491,64 +425,165 @@ class BusyIndicator(QWidget):
 
 
 # --------------------------------------------------------------------------
-# Cửa sổ chính
+# Cửa sổ chính MainWindow — Thiết kế 2026 (Floating Sidebar & Menu Bar)
 # --------------------------------------------------------------------------
 class MainWindow(QMainWindow):
     SYSTEM_INSTRUCTION = (
-        "Bạn là trợ lý học tập tên SolveX. Bạn giúp người học hiểu và làm bài tập. "
-        "Luôn giải thích cách làm chứ không chỉ đưa đáp án trống không. "
-        "Nếu không chắc chắn, hãy nói rõ là không chắc thay vì bịa ra đáp án. "
-        "Trả lời bằng tiếng Việt, trình bày bằng Markdown."
+        "Bạn là trợ lý học tập SolveX. Giải thích từng bước rõ ràng, chính xác. "
+        "Dùng Markdown để trình bày."
     )
 
     def __init__(self):
         super().__init__()
         self.config = Config()
-        self.history = []          # định dạng contents của Gemini API
-        self.messages = []         # [(role, markdown)] để hiển thị
+        self.history_mgr = HistoryManager()
+        self.current_session = None
+
+        i18n.set_language(self.config.get("language", "vi"))
+
+        self.history = []
+        self.messages = []
         self.ask_worker = None
+        self.capture_worker = None
         self.record_worker = None
-        self.pending_shot = None   # ảnh chụp kèm theo phiên listening
+        self.test_worker = None
+        self.update_worker = None
+        self.build_worker = None
+        self.pending_shot = None
         self.record_seconds = 0
 
         self.setWindowTitle("SolveX")
         self.setWindowIcon(build_app_icon())
-        self.resize(1180, 760)
-        self.setStyleSheet(style.STYLESHEET)
+        self.resize(1200, 780)
 
+        self._build_menu_bar()
         self._build_ui()
+        self.apply_theme(self.config.get("theme", "dark"))
         self._load_config_into_ui()
-        self._render_chat()
 
         self.record_timer = QTimer(self)
         self.record_timer.timeout.connect(self._tick_record)
 
         self.answer_window = None
-        self.release_notes = None
-        self.busy_indicator = BusyIndicator()
+        self.busy_indicator = BusyIndicator(self.config.get("theme", "dark"))
         self.toolbar = CompactWindow(self)
+
         self._setup_tray()
-        self.toolbar.show()
+        i18n.language_changed.connect(self.on_language_changed)
+
+        self.on_new_chat()
 
     def showEvent(self, event):
         super().showEvent(event)
         fluent.apply_mica(self)
 
-    # ---------------- tray icon & bảng điều khiển nổi ----------------
+    # ------------------ Native Menu Bar ------------------
+    def _build_menu_bar(self):
+        menubar = self.menuBar()
+        menubar.clear()
+
+        # 1. Menu Tệp (File)
+        file_menu = menubar.addMenu(i18n.t("menu_file"))
+        act_new = QAction(IconFactory.draw_icon("plus", style.TEXT, 16), i18n.t("btn_new_chat"), self)
+        act_new.triggered.connect(self.on_new_chat)
+        file_menu.addAction(act_new)
+
+        act_clear_hist = QAction(IconFactory.draw_icon("trash", style.RED, 16), i18n.t("btn_clear_all"), self)
+        act_clear_hist.triggered.connect(self.on_clear_history)
+        file_menu.addAction(act_clear_hist)
+
+        file_menu.addSeparator()
+        act_tray = QAction(IconFactory.draw_icon("tray", style.TEXT, 16), i18n.t("tip_tray"), self)
+        act_tray.triggered.connect(self.minimize_to_tray)
+        file_menu.addAction(act_tray)
+
+        act_exit = QAction(IconFactory.draw_icon("close", style.RED, 16), i18n.t("menu_exit"), self)
+        act_exit.triggered.connect(self.quit_app)
+        file_menu.addAction(act_exit)
+
+        # 2. Menu Giao diện (View / Theme)
+        view_menu = menubar.addMenu(i18n.t("menu_view"))
+        act_dark = QAction(IconFactory.draw_icon("moon", style.AMBER, 16), i18n.t("quick_theme_dark"), self)
+        act_dark.triggered.connect(lambda: self.apply_theme("dark"))
+        view_menu.addAction(act_dark)
+
+        act_light = QAction(IconFactory.draw_icon("sun", style.AMBER, 16), i18n.t("quick_theme_light"), self)
+        act_light.triggered.connect(lambda: self.apply_theme("light"))
+        view_menu.addAction(act_light)
+
+        view_menu.addSeparator()
+        act_topbar = QAction(IconFactory.draw_icon("camera", style.TEXT, 16), i18n.t("quick_compact"), self)
+        act_topbar.triggered.connect(self._toggle_toolbar)
+        view_menu.addAction(act_topbar)
+
+        # 3. Menu Ngôn ngữ (Language)
+        lang_menu = menubar.addMenu(i18n.t("menu_language"))
+        act_vi = QAction(IconFactory.draw_icon("globe", style.TEXT, 16), "Tiếng Việt", self)
+        act_vi.triggered.connect(lambda: self._set_language_code("vi"))
+        lang_menu.addAction(act_vi)
+
+        act_en = QAction(IconFactory.draw_icon("globe", style.TEXT, 16), "English", self)
+        act_en.triggered.connect(lambda: self._set_language_code("en"))
+        lang_menu.addAction(act_en)
+
+        # 4. Menu Cài đặt (Settings)
+        set_menu = menubar.addMenu(i18n.t("menu_settings"))
+        act_open_set = QAction(IconFactory.draw_icon("settings", style.TEXT, 16), i18n.t("nav_settings"), self)
+        act_open_set.triggered.connect(lambda: self.show_tab("settings"))
+        set_menu.addAction(act_open_set)
+
+        act_test_key = QAction(IconFactory.draw_icon("key", style.AMBER, 16), i18n.t("btn_test_api"), self)
+        act_test_key.triggered.connect(self.on_test_api_key)
+        set_menu.addAction(act_test_key)
+
+        # 5. Menu Trợ giúp (Help & Update)
+        help_menu = menubar.addMenu(i18n.t("menu_help"))
+        act_guide = QAction(IconFactory.draw_icon("guide", style.TEXT, 16), i18n.t("nav_guide"), self)
+        act_guide.triggered.connect(lambda: self.show_tab("guide"))
+        help_menu.addAction(act_guide)
+
+        act_change = QAction(IconFactory.draw_icon("spark", style.AMBER, 16), i18n.t("nav_changelog"), self)
+        act_change.triggered.connect(self.show_release_notes)
+        help_menu.addAction(act_change)
+
+        help_menu.addSeparator()
+        act_upd = QAction(IconFactory.draw_icon("update", style.TEAL, 16), i18n.t("btn_check_update"), self)
+        act_upd.triggered.connect(self.on_check_update)
+        help_menu.addAction(act_upd)
+
+        act_build = QAction(IconFactory.draw_icon("settings", style.TEXT, 16), i18n.t("btn_build_exe"), self)
+        act_build.triggered.connect(self.on_build_exe)
+        help_menu.addAction(act_build)
+
+    def _set_language_code(self, lang_code: str):
+        i18n.set_language(lang_code)
+        self.config.set("language", lang_code)
+        self.config.save()
+
+    def apply_theme(self, theme_name: str):
+        self.config.set("theme", theme_name)
+        self.config.save()
+        self.setStyleSheet(style.get_stylesheet(theme_name))
+        if hasattr(self, "toolbar") and self.toolbar:
+            self.toolbar.setStyleSheet(style.get_compact_stylesheet(theme_name))
+        if hasattr(self, "btn_quick_theme"):
+            is_dark = theme_name == "dark"
+            self.btn_quick_theme.setIcon(IconFactory.draw_icon("moon" if is_dark else "sun", style.AMBER, 16))
+            self.btn_quick_theme.setText("Dark" if is_dark else "Light")
+        self._render_chat()
+
+    # ------------------ Tray & Display Modes ------------------
     def _setup_tray(self):
         if not QSystemTrayIcon.isSystemTrayAvailable():
             self.tray = None
             return
-
         self.tray = QSystemTrayIcon(build_app_icon(), self)
         self.tray.setToolTip("SolveX")
 
         menu = QMenu()
-        self.toggle_toolbar_action = menu.addAction(
-            "Ẩn bảng điều khiển", self._toggle_toolbar
-        )
-        menu.addAction("Cài đặt…", self.show_full_window)
-        menu.addAction("Xem có gì mới…", self.show_release_notes)
+        menu.addAction("Ẩn/Hiện Top Bar", self._toggle_toolbar)
+        menu.addAction(i18n.t("nav_settings"), lambda: self.show_tab("settings"))
+        menu.addAction(i18n.t("nav_changelog"), self.show_release_notes)
         menu.addSeparator()
         menu.addAction("Thoát SolveX", self.quit_app)
         self.tray.setContextMenu(menu)
@@ -557,243 +592,509 @@ class MainWindow(QMainWindow):
 
     def _on_tray_activated(self, reason):
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
-            self._toggle_toolbar()
+            self.show_full_window()
 
     def _toggle_toolbar(self):
         if self.toolbar.isVisible():
-            self.minimize_to_tray()
+            self.toolbar.hide()
         else:
             self.toolbar.show()
             self.toolbar.raise_()
-            if self.tray is not None:
-                self.toggle_toolbar_action.setText("Ẩn bảng điều khiển")
 
     def minimize_to_tray(self):
-        """Thu bảng điều khiển xuống chỉ còn icon khay hệ thống."""
         if self.toolbar.isMaximized():
             self.toolbar.showNormal()
         self.toolbar.hide()
-        if self.tray is not None:
-            self.toggle_toolbar_action.setText("Hiện bảng điều khiển")
+        self.hide()
 
     def show_full_window(self):
         self.show()
         self.raise_()
         self.activateWindow()
 
+    def show_tab(self, tab_name: str):
+        self.show_full_window()
+        tab_map = {"chat": 0, "history": 1, "settings": 2, "guide": 3, "changelog": 4}
+        idx = tab_map.get(tab_name, 0)
+        self.nav_group.buttons()[idx].setChecked(True)
+        self.stack.setCurrentIndex(idx)
+        if tab_name == "history":
+            self._refresh_history_list()
+
     def show_release_notes(self):
-        if self.release_notes is None:
-            self.release_notes = ReleaseNotesDialog()
-        self.release_notes.show()
-        self.release_notes.raise_()
-        self.release_notes.activateWindow()
+        self.show_tab("changelog")
 
     def quit_app(self):
         self._shutdown()
         QApplication.instance().quit()
 
-    def _popup_answer(self, text: str):
-        self.busy_indicator.hide()
-        if self.answer_window is None:
-            self.answer_window = AnswerWindow()
-        self.answer_window.show_answer(text)
-
-    # ---------------- ẩn/hiện khi chụp màn hình ----------------
-    def _hide_for_capture(self) -> list:
-        """Ẩn mọi cửa sổ của SolveX đang hiện, để chúng không lọt vào ảnh chụp."""
-        hidden = []
-        if self.isVisible():
-            self.hide()
-            hidden.append(self)
-        if self.toolbar.isVisible():
-            self.toolbar.hide()
-            hidden.append(self.toolbar)
-        if hidden:
-            # Đẩy nốt các sự kiện ẩn/vẽ lại đang chờ, để màn hình thật sự
-            # cập nhật trước khi chụp — tránh chụp nhầm ảnh cửa sổ cũ.
-            for _ in range(4):
-                QApplication.processEvents()
-        return hidden
-
-    def _restore_after_capture(self, hidden: list):
-        for widget in hidden:
-            widget.show()
-        if self.toolbar in hidden:
-            self.toolbar.raise_()
-
-    # ---------------- xây dựng giao diện ----------------
+    # ------------------ Xây dựng UI 2026 Floating Sidebar ------------------
     def _build_ui(self):
         root = QWidget()
         self.setCentralWidget(root)
-        outer = QVBoxLayout(root)
-        outer.setContentsMargins(14, 12, 14, 8)
-        outer.setSpacing(10)
+        layout = QHBoxLayout(root)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        outer.addWidget(self._build_header())
+        # 2026 Floating Sidebar
+        sidebar = QFrame()
+        sidebar.setObjectName("NavSidebar")
+        sidebar.setFixedWidth(210)
+        s_box = QVBoxLayout(sidebar)
+        s_box.setContentsMargins(10, 16, 10, 16)
+        s_box.setSpacing(6)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(self._build_sidebar())
-        splitter.addWidget(self._build_chat_panel())
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-        splitter.setSizes([340, 820])
-        outer.addWidget(splitter, 1)
+        brand_box = QHBoxLayout()
+        logo = QLabel()
+        logo.setPixmap(build_app_icon().pixmap(24, 24))
+        brand_box.addWidget(logo)
+        title_box = QVBoxLayout()
+        brand_lbl = QLabel("SolveX")
+        brand_lbl.setObjectName("Brand")
+        tagline_lbl = QLabel(i18n.t("app_tagline"))
+        tagline_lbl.setObjectName("Tagline")
+        title_box.addWidget(brand_lbl)
+        title_box.addWidget(tagline_lbl)
+        brand_box.addLayout(title_box)
+        s_box.addLayout(brand_box)
+        s_box.addSpacing(16)
+
+        self.nav_group = QButtonGroup(self)
+        self.nav_group.setExclusive(True)
+
+        self.btn_nav_chat = self._create_nav_btn("solve", i18n.t("nav_chat"), 0)
+        self.btn_nav_hist = self._create_nav_btn("history", i18n.t("nav_history"), 1)
+        self.btn_nav_set = self._create_nav_btn("settings", i18n.t("nav_settings"), 2)
+        self.btn_nav_guide = self._create_nav_btn("guide", i18n.t("nav_guide"), 3)
+        self.btn_nav_change = self._create_nav_btn("spark", i18n.t("nav_changelog"), 4)
+
+        s_box.addWidget(self.btn_nav_chat)
+        s_box.addWidget(self.btn_nav_hist)
+        s_box.addWidget(self.btn_nav_set)
+        s_box.addWidget(self.btn_nav_guide)
+        s_box.addWidget(self.btn_nav_change)
+        s_box.addStretch(1)
+
+        layout.addWidget(sidebar)
+
+        # Container bên phải
+        right_container = QWidget()
+        r_layout = QVBoxLayout(right_container)
+        r_layout.setContentsMargins(0, 0, 0, 0)
+        r_layout.setSpacing(0)
+
+        # Header Quick Action Toolbar
+        header = QFrame()
+        header.setObjectName("HeaderBar")
+        header.setFixedHeight(46)
+        h_layout = QHBoxLayout(header)
+        h_layout.setContentsMargins(14, 6, 14, 6)
+        h_layout.setSpacing(10)
+
+        page_title = QLabel("SolveX v" + APP_VERSION)
+        page_title.setStyleSheet("font-weight:bold; font-size:14px;")
+        h_layout.addWidget(page_title)
+        h_layout.addStretch(1)
+
+        # Quick Theme Toggle Button
+        self.btn_quick_theme = QPushButton("Dark")
+        self.btn_quick_theme.setObjectName("HeaderQuickBtn")
+        self.btn_quick_theme.setIcon(IconFactory.draw_icon("moon", style.AMBER, 16))
+        self.btn_quick_theme.clicked.connect(self._toggle_theme)
+        h_layout.addWidget(self.btn_quick_theme)
+
+        # Quick Language Toggle Button
+        self.btn_quick_lang = QPushButton(i18n.t("quick_lang"))
+        self.btn_quick_lang.setObjectName("HeaderQuickBtn")
+        self.btn_quick_lang.setIcon(IconFactory.draw_icon("globe", style.TEXT, 16))
+        self.btn_quick_lang.clicked.connect(self._toggle_lang)
+        h_layout.addWidget(self.btn_quick_lang)
+
+        # Quick Top Bar Open Button
+        btn_quick_top = QPushButton(i18n.t("quick_compact"))
+        btn_quick_top.setObjectName("HeaderQuickBtn")
+        btn_quick_top.setIcon(IconFactory.draw_icon("camera", style.TEXT, 16))
+        btn_quick_top.clicked.connect(self._toggle_toolbar)
+        h_layout.addWidget(btn_quick_top)
+
+        # Quick GitHub Update Button
+        btn_quick_upd = QPushButton(i18n.t("quick_update"))
+        btn_quick_upd.setObjectName("HeaderQuickBtn")
+        btn_quick_upd.setIcon(IconFactory.draw_icon("update", style.TEAL, 16))
+        btn_quick_upd.clicked.connect(self.on_check_update)
+        h_layout.addWidget(btn_quick_upd)
+
+        r_layout.addWidget(header)
+
+        # Stack Pages
+        self.stack = QStackedWidget()
+        self.stack.addWidget(self._build_chat_page())
+        self.stack.addWidget(self._build_history_page())
+        self.stack.addWidget(self._build_settings_page())
+        self.stack.addWidget(self._build_guide_page())
+        self.stack.addWidget(self._build_changelog_page())
+        r_layout.addWidget(self.stack, 1)
+
+        layout.addWidget(right_container, 1)
+        self.btn_nav_chat.setChecked(True)
 
         self.status = self.statusBar()
-        self.status.showMessage("Sẵn sàng. Nhập API key để bắt đầu.")
+        self.status.showMessage(i18n.t("status_ready"))
 
         QShortcut(QKeySequence("F2"), self, self.on_solve_normal)
         QShortcut(QKeySequence("F3"), self, self.on_listening_clicked)
         QShortcut(QKeySequence("Ctrl+Return"), self, self.on_send_chat)
 
-    def _build_header(self) -> QWidget:
-        frame = QFrame()
-        frame.setObjectName("Panel")
-        row = QHBoxLayout(frame)
-        row.setContentsMargins(14, 10, 14, 10)
-        row.setSpacing(10)
+    def _create_nav_btn(self, icon_name: str, text: str, index: int) -> QPushButton:
+        btn = QPushButton(f"  {text}")
+        btn.setObjectName("NavBtn")
+        btn.setCheckable(True)
+        btn.setIcon(IconFactory.draw_icon(icon_name, style.MUTED, 18))
+        self.nav_group.addButton(btn, index)
+        btn.clicked.connect(lambda: self.stack.setCurrentIndex(index))
+        return btn
 
-        brand_box = QVBoxLayout()
-        brand_box.setSpacing(0)
-        brand = QLabel("SolveX")
-        brand.setObjectName("Brand")
-        tagline = QLabel("Trợ lý làm bài tập")
-        tagline.setObjectName("Tagline")
-        brand_box.addWidget(brand)
-        brand_box.addWidget(tagline)
-        row.addLayout(brand_box)
-        row.addSpacing(18)
+    def _toggle_theme(self):
+        curr = self.config.get("theme", "dark")
+        new_theme = "light" if curr == "dark" else "dark"
+        self.apply_theme(new_theme)
+        if hasattr(self, "theme_dark_rad"):
+            if new_theme == "light":
+                self.theme_light_rad.setChecked(True)
+            else:
+                self.theme_dark_rad.setChecked(True)
 
-        row.addWidget(QLabel("API key"))
-        self.key_input = QLineEdit()
-        self.key_input.setEchoMode(QLineEdit.EchoMode.Password)
-        self.key_input.setPlaceholderText("Dán Gemini API key vào đây")
-        self.key_input.setMinimumWidth(240)
-        row.addWidget(self.key_input, 1)
+    def _toggle_lang(self):
+        curr = self.config.get("language", "vi")
+        new_lang = "en" if curr == "vi" else "vi"
+        i18n.set_language(new_lang)
+        self.config.set("language", new_lang)
+        self.config.save()
 
-        self.show_key = QPushButton("Hiện")
-        self.show_key.setCheckable(True)
-        self.show_key.setFixedWidth(52)
-        self.show_key.toggled.connect(self._toggle_key_visibility)
-        row.addWidget(self.show_key)
+    # Tab 1: Chat Page
+    def _build_chat_page(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(10)
 
-        row.addWidget(QLabel("Model"))
-        self.model_input = QLineEdit()
-        self.model_input.setMinimumWidth(180)
-        row.addWidget(self.model_input)
+        top_card = QFrame()
+        top_card.setObjectName("Card")
+        t_row = QHBoxLayout(top_card)
+        t_row.setContentsMargins(12, 10, 12, 10)
+        t_row.setSpacing(10)
 
-        save = QPushButton("Lưu")
-        save.clicked.connect(self.on_save_settings)
-        row.addWidget(save)
+        self.btn_solve_main = QPushButton(i18n.t("btn_solve_normal") + " (F2)")
+        self.btn_solve_main.setObjectName("Solve")
+        self.btn_solve_main.setIcon(IconFactory.draw_icon("solve", "#ffffff", 18))
+        self.btn_solve_main.clicked.connect(self.on_solve_normal)
+        t_row.addWidget(self.btn_solve_main)
 
-        return frame
+        self.btn_listen_main = QPushButton(i18n.t("btn_solve_listening") + " (F3)")
+        self.btn_listen_main.setObjectName("Listen")
+        self.btn_listen_main.setIcon(IconFactory.draw_icon("headphones", "#ffffff", 18))
+        self.btn_listen_main.clicked.connect(self.on_listening_clicked)
+        t_row.addWidget(self.btn_listen_main)
 
-    def _build_sidebar(self) -> QWidget:
-        frame = QFrame()
-        frame.setObjectName("Panel")
-        frame.setMinimumWidth(310)
-        frame.setMaximumWidth(430)
-        box = QVBoxLayout(frame)
-        box.setContentsMargins(14, 12, 14, 14)
-        box.setSpacing(8)
+        self.btn_capture_main = QPushButton(i18n.t("btn_pick_region"))
+        self.btn_capture_main.setIcon(IconFactory.draw_icon("camera", style.TEXT, 16))
+        self.btn_capture_main.clicked.connect(self.on_pick_region)
+        t_row.addWidget(self.btn_capture_main)
 
-        box.addWidget(self._section("NGUỒN CHỤP"))
-        self.monitor_combo = QComboBox()
-        self._populate_monitors()
-        self.monitor_combo.currentIndexChanged.connect(self._on_source_changed)
-        box.addWidget(self.monitor_combo)
+        t_row.addStretch(1)
 
-        region_row = QHBoxLayout()
-        pick = QPushButton("Chọn vùng…")
-        pick.clicked.connect(self.on_pick_region)
-        region_row.addWidget(pick)
-        self.region_label = QLabel("chưa chọn")
-        self.region_label.setStyleSheet(f"color:{style.MUTED};")
-        region_row.addWidget(self.region_label, 1)
-        box.addLayout(region_row)
+        new_btn = QPushButton(i18n.t("btn_new_chat"))
+        new_btn.setIcon(IconFactory.draw_icon("plus", style.TEXT, 16))
+        new_btn.clicked.connect(self.on_new_chat)
+        t_row.addWidget(new_btn)
 
-        self.hide_check = QCheckBox("Ẩn cửa sổ & bảng điều khiển SolveX khi chụp")
-        box.addWidget(self.hide_check)
-
-        self.preview = QLabel("Ảnh chụp sẽ hiện ở đây")
-        self.preview.setObjectName("Preview")
-        self.preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.preview.setMinimumHeight(150)
-        self.preview.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        box.addWidget(self.preview, 1)
-
-        box.addWidget(self._section("GIẢI BÀI"))
-        self.solve_btn = QPushButton("Giải thường   ·   F2")
-        self.solve_btn.setObjectName("Solve")
-        self.solve_btn.clicked.connect(self.on_solve_normal)
-        box.addWidget(self.solve_btn)
-
-        self.listen_btn = QPushButton("Giải Listening   ·   F3")
-        self.listen_btn.setObjectName("Listen")
-        self.listen_btn.clicked.connect(self.on_listening_clicked)
-        box.addWidget(self.listen_btn)
-
-        self.loopback_check = QCheckBox("Thu tiếng loa (bỏ tick = thu micro)")
-        box.addWidget(self.loopback_check)
+        layout.addWidget(top_card)
 
         self.level_bar = QProgressBar()
         self.level_bar.setRange(0, 100)
         self.level_bar.setTextVisible(False)
         self.level_bar.setVisible(False)
-        box.addWidget(self.level_bar)
+        layout.addWidget(self.level_bar)
 
         self.record_label = QLabel("")
-        self.record_label.setStyleSheet(f"color:{style.MUTED};")
+        self.record_label.setStyleSheet(f"color:{style.RED}; font-weight:bold;")
         self.record_label.setVisible(False)
-        box.addWidget(self.record_label)
-
-        box.addSpacing(4)
-        bottom = QHBoxLayout()
-        new_chat = QPushButton("Hội thoại mới")
-        new_chat.clicked.connect(self.on_new_chat)
-        bottom.addWidget(new_chat)
-        prompts = QPushButton("Hướng dẫn AI…")
-        prompts.clicked.connect(self.on_edit_prompts)
-        bottom.addWidget(prompts)
-        box.addLayout(bottom)
-
-        return frame
-
-    def _build_chat_panel(self) -> QWidget:
-        container = QWidget()
-        box = QVBoxLayout(container)
-        box.setContentsMargins(0, 0, 0, 0)
-        box.setSpacing(8)
+        layout.addWidget(self.record_label)
 
         self.chat = QTextBrowser()
         self.chat.setObjectName("Chat")
         self.chat.setOpenExternalLinks(True)
-        box.addWidget(self.chat, 1)
+        layout.addWidget(self.chat, 1)
 
         input_row = QHBoxLayout()
         self.chat_input = QPlainTextEdit()
-        self.chat_input.setPlaceholderText(
-            "Hỏi thêm về bài vừa giải… (Ctrl+Enter để gửi)"
-        )
-        self.chat_input.setFixedHeight(78)
+        self.chat_input.setPlaceholderText(i18n.t("chat_input_ph"))
+        self.chat_input.setFixedHeight(72)
         input_row.addWidget(self.chat_input, 1)
 
-        self.send_btn = QPushButton("Gửi")
+        self.send_btn = QPushButton(i18n.t("btn_send"))
         self.send_btn.setObjectName("Send")
         self.send_btn.setFixedWidth(84)
-        self.send_btn.setFixedHeight(78)
+        self.send_btn.setFixedHeight(72)
         self.send_btn.clicked.connect(self.on_send_chat)
         input_row.addWidget(self.send_btn)
-        box.addLayout(input_row)
 
-        return container
+        layout.addLayout(input_row)
+        return page
 
-    def _section(self, text: str) -> QLabel:
-        label = QLabel(text)
-        label.setObjectName("SectionLabel")
-        return label
+    # Tab 2: History Page
+    def _build_history_page(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(10)
 
-    # ---------------- cấu hình ----------------
+        header_row = QHBoxLayout()
+        title = QLabel(i18n.t("hist_title"))
+        title.setObjectName("Brand")
+        header_row.addWidget(title)
+        header_row.addStretch(1)
+
+        clear_btn = QPushButton(i18n.t("btn_clear_all"))
+        clear_btn.setIcon(IconFactory.draw_icon("trash", style.RED, 16))
+        clear_btn.clicked.connect(self.on_clear_history)
+        header_row.addWidget(clear_btn)
+        layout.addLayout(header_row)
+
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.hist_list = QListWidget()
+        self.hist_list.itemClicked.connect(self.on_history_item_clicked)
+        splitter.addWidget(self.hist_list)
+
+        self.hist_preview = QTextBrowser()
+        self.hist_preview.setObjectName("Chat")
+        splitter.addWidget(self.hist_preview)
+        splitter.setSizes([300, 600])
+
+        layout.addWidget(splitter, 1)
+        return page
+
+    # Tab 3: Settings Page
+    def _build_settings_page(self) -> QWidget:
+        page = QWidget()
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+
+        content = QWidget()
+        box = QVBoxLayout(content)
+        box.setContentsMargins(20, 16, 20, 20)
+        box.setSpacing(16)
+
+        # Section 1: General & Theme
+        box.addWidget(self._section_lbl("st_section_general"))
+        gen_card = QFrame()
+        gen_card.setObjectName("Card")
+        g_layout = QVBoxLayout(gen_card)
+
+        g_layout.addWidget(QLabel(i18n.t("st_theme")))
+        theme_row = QHBoxLayout()
+        self.theme_dark_rad = QRadioButton(i18n.t("st_theme_dark"))
+        self.theme_light_rad = QRadioButton(i18n.t("st_theme_light"))
+        theme_row.addWidget(self.theme_dark_rad)
+        theme_row.addWidget(self.theme_light_rad)
+        theme_row.addStretch(1)
+        g_layout.addLayout(theme_row)
+        g_layout.addSpacing(10)
+
+        g_layout.addWidget(QLabel(i18n.t("st_language")))
+        lang_row = QHBoxLayout()
+        self.lang_vi = QRadioButton("Tiếng Việt")
+        self.lang_en = QRadioButton("English")
+        lang_row.addWidget(self.lang_vi)
+        lang_row.addWidget(self.lang_en)
+        lang_row.addStretch(1)
+        g_layout.addLayout(lang_row)
+
+        g_layout.addSpacing(10)
+        g_layout.addWidget(QLabel(i18n.t("st_startup_mode")))
+        self.start_combo = QComboBox()
+        self.start_combo.addItem(i18n.t("st_startup_full"), "full")
+        self.start_combo.addItem(i18n.t("st_startup_compact"), "compact")
+        self.start_combo.addItem(i18n.t("st_startup_tray"), "tray")
+        g_layout.addWidget(self.start_combo)
+
+        box.addWidget(gen_card)
+
+        # Section 2: API Config
+        box.addWidget(self._section_lbl("st_section_api"))
+        api_card = QFrame()
+        api_card.setObjectName("Card")
+        a_layout = QVBoxLayout(api_card)
+
+        a_layout.addWidget(QLabel(i18n.t("st_api_key")))
+        key_row = QHBoxLayout()
+        self.key_input = QLineEdit()
+        self.key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.key_input.setPlaceholderText(i18n.t("st_api_key_ph"))
+        key_row.addWidget(self.key_input, 1)
+
+        self.show_key = QPushButton(i18n.t("btn_show"))
+        self.show_key.setCheckable(True)
+        self.show_key.toggled.connect(self._toggle_key_visibility)
+        key_row.addWidget(self.show_key)
+
+        self.test_api_btn = QPushButton(i18n.t("btn_test_api"))
+        self.test_api_btn.clicked.connect(self.on_test_api_key)
+        key_row.addWidget(self.test_api_btn)
+        a_layout.addLayout(key_row)
+
+        a_layout.addWidget(QLabel(i18n.t("st_model")))
+        self.model_input = QLineEdit()
+        a_layout.addWidget(self.model_input)
+
+        box.addWidget(api_card)
+
+        # Section 3: Capture & Audio
+        box.addWidget(self._section_lbl("st_section_capture"))
+        cap_card = QFrame()
+        cap_card.setObjectName("Card")
+        c_layout = QVBoxLayout(cap_card)
+
+        c_layout.addWidget(QLabel(i18n.t("st_capture_source")))
+        self.monitor_combo = QComboBox()
+        self._populate_monitors()
+        self.monitor_combo.currentIndexChanged.connect(self._on_source_changed)
+        c_layout.addWidget(self.monitor_combo)
+
+        self.hide_check = QCheckBox(i18n.t("st_hide_on_capture"))
+        c_layout.addWidget(self.hide_check)
+
+        self.loopback_check = QCheckBox(i18n.t("st_loopback"))
+        c_layout.addWidget(self.loopback_check)
+
+        box.addWidget(cap_card)
+
+        # Section 4: Prompts
+        box.addWidget(self._section_lbl("st_section_prompts"))
+        prompt_card = QFrame()
+        prompt_card.setObjectName("Card")
+        p_layout = QVBoxLayout(prompt_card)
+
+        p_layout.addWidget(QLabel(i18n.t("st_prompt_normal_lbl")))
+        self.prompt_normal_edit = QPlainTextEdit()
+        self.prompt_normal_edit.setFixedHeight(90)
+        p_layout.addWidget(self.prompt_normal_edit)
+
+        p_layout.addWidget(QLabel(i18n.t("st_prompt_listen_lbl")))
+        self.prompt_listen_edit = QPlainTextEdit()
+        self.prompt_listen_edit.setFixedHeight(90)
+        p_layout.addWidget(self.prompt_listen_edit)
+
+        box.addWidget(prompt_card)
+
+        # Section 5: GitHub Online Update & Build
+        box.addWidget(self._section_lbl("st_section_update"))
+        upd_card = QFrame()
+        upd_card.setObjectName("Card")
+        u_layout = QVBoxLayout(upd_card)
+
+        u_row = QHBoxLayout()
+        chk_upd_btn = QPushButton(i18n.t("btn_check_update"))
+        chk_upd_btn.setIcon(IconFactory.draw_icon("update", style.TEAL, 16))
+        chk_upd_btn.clicked.connect(self.on_check_update)
+        u_row.addWidget(chk_upd_btn)
+
+        build_exe_btn = QPushButton(i18n.t("btn_build_exe"))
+        build_exe_btn.setIcon(IconFactory.draw_icon("settings", style.TEXT, 16))
+        build_exe_btn.clicked.connect(self.on_build_exe)
+        u_row.addWidget(build_exe_btn)
+        u_layout.addLayout(u_row)
+
+        box.addWidget(upd_card)
+
+        save_row = QHBoxLayout()
+        save_row.addStretch(1)
+        save_btn = QPushButton(i18n.t("btn_save"))
+        save_btn.setObjectName("PrimaryBtn")
+        save_btn.clicked.connect(self.on_save_settings)
+        save_row.addWidget(save_btn)
+        box.addLayout(save_row)
+
+        scroll.setWidget(content)
+        p_layout_outer = QVBoxLayout(page)
+        p_layout_outer.setContentsMargins(0, 0, 0, 0)
+        p_layout_outer.addWidget(scroll)
+        return page
+
+    # Tab 4: User Guide Page
+    def _build_guide_page(self) -> QWidget:
+        page = QWidget()
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+
+        content = QWidget()
+        box = QVBoxLayout(content)
+        box.setContentsMargins(20, 16, 20, 20)
+        box.setSpacing(16)
+
+        title = QLabel(i18n.t("guide_title"))
+        title.setObjectName("Brand")
+        box.addWidget(title)
+
+        steps = [
+            ("guide_step1_title", "guide_step1_desc", "key"),
+            ("guide_step2_title", "guide_step2_desc", "solve"),
+            ("guide_step3_title", "guide_step3_desc", "headphones"),
+            ("guide_step4_title", "guide_step4_desc", "camera"),
+        ]
+
+        for t_key, d_key, icon_name in steps:
+            card = QFrame()
+            card.setObjectName("Card")
+            c_box = QHBoxLayout(card)
+            ic_lbl = QLabel()
+            ic_lbl.setPixmap(IconFactory.draw_icon(icon_name, style.AMBER, 32).pixmap(32, 32))
+            c_box.addWidget(ic_lbl)
+            text_box = QVBoxLayout()
+            st_title = QLabel(i18n.t(t_key))
+            st_title.setStyleSheet("font-size:15px; font-weight:bold;")
+            st_desc = QLabel(i18n.t(d_key))
+            st_desc.setWordWrap(True)
+            text_box.addWidget(st_title)
+            text_box.addWidget(st_desc)
+            c_box.addLayout(text_box, 1)
+            box.addWidget(card)
+
+        sc_card = QFrame()
+        sc_card.setObjectName("Card")
+        sc_layout = QVBoxLayout(sc_card)
+        sc_title = QLabel(i18n.t("guide_shortcuts"))
+        sc_title.setStyleSheet("font-size:15px; font-weight:bold; color:" + style.AMBER + ";")
+        sc_layout.addWidget(sc_title)
+        sc_layout.addWidget(QLabel(i18n.t("guide_sc_f2")))
+        sc_layout.addWidget(QLabel(i18n.t("guide_sc_f3")))
+        sc_layout.addWidget(QLabel(i18n.t("guide_sc_ctrl_enter")))
+        box.addWidget(sc_card)
+
+        scroll.setWidget(content)
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(scroll)
+        return page
+
+    # Tab 5: Changelog Page
+    def _build_changelog_page(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(14, 14, 14, 14)
+        browser = QTextBrowser()
+        browser.setObjectName("Chat")
+        browser.setOpenExternalLinks(True)
+        browser.setHtml(f"<style>{style.get_chat_css(self.config.get('theme', 'dark'))}</style>{render_markdown(changelog_markdown())}")
+        layout.addWidget(browser)
+        return page
+
+    def _section_lbl(self, i18n_key: str) -> QLabel:
+        lbl = QLabel(i18n.t(i18n_key))
+        lbl.setObjectName("SectionLabel")
+        return lbl
+
+    # ------------------ Quản lý Config UI ------------------
     def _populate_monitors(self):
         self.monitor_combo.clear()
         try:
@@ -803,28 +1104,38 @@ class MainWindow(QMainWindow):
         if len(monitors) > 1:
             for index, mon in enumerate(monitors[1:], start=1):
                 self.monitor_combo.addItem(
-                    f"Màn hình {index}  ({mon['width']}×{mon['height']})", index
+                    f"{i18n.t('st_monitor_num', index)} ({mon['width']}×{mon['height']})", index
                 )
         else:
-            self.monitor_combo.addItem("Màn hình chính", 1)
+            self.monitor_combo.addItem(i18n.t("st_monitor_primary"), 1)
         if len(monitors) > 2:
-            self.monitor_combo.addItem("Tất cả màn hình", 0)
-        self.monitor_combo.addItem("Vùng đã chọn", -1)
+            self.monitor_combo.addItem(i18n.t("st_monitor_all"), 0)
+        self.monitor_combo.addItem(i18n.t("st_monitor_region"), -1)
 
     def _load_config_into_ui(self):
         self.key_input.setText(self.config.get("api_key"))
         self.model_input.setText(self.config.get("model"))
         self.hide_check.setChecked(bool(self.config.get("hide_window_on_capture")))
         self.loopback_check.setChecked(bool(self.config.get("use_loopback")))
+        self.prompt_normal_edit.setPlainText(self.config.get("prompt_normal"))
+        self.prompt_listen_edit.setPlainText(self.config.get("prompt_listening"))
 
-        region = self.config.get("region")
-        if region:
-            self.region_label.setText(f"{region[2]}×{region[3]}")
+        theme = self.config.get("theme", "dark")
+        if theme == "light":
+            self.theme_light_rad.setChecked(True)
+        else:
+            self.theme_dark_rad.setChecked(True)
 
-        if self.config.get("capture_mode") == "region":
-            index = self.monitor_combo.findData(-1)
-            if index >= 0:
-                self.monitor_combo.setCurrentIndex(index)
+        lang = self.config.get("language", "vi")
+        if lang == "en":
+            self.lang_en.setChecked(True)
+        else:
+            self.lang_vi.setChecked(True)
+
+        mode = self.config.get("startup_mode", "compact")
+        idx = self.start_combo.findData(mode)
+        if idx >= 0:
+            self.start_combo.setCurrentIndex(idx)
 
     def _on_source_changed(self):
         if self.monitor_combo.currentData() == -1:
@@ -837,22 +1148,101 @@ class MainWindow(QMainWindow):
         self.key_input.setEchoMode(
             QLineEdit.EchoMode.Normal if shown else QLineEdit.EchoMode.Password
         )
-        self.show_key.setText("Ẩn" if shown else "Hiện")
+        self.show_key.setText(i18n.t("btn_hide") if shown else i18n.t("btn_show"))
+
+    def on_language_changed(self, lang_code: str):
+        self._build_menu_bar()
+        self.btn_nav_chat.setText(f"  {i18n.t('nav_chat')}")
+        self.btn_nav_hist.setText(f"  {i18n.t('nav_history')}")
+        self.btn_nav_set.setText(f"  {i18n.t('nav_settings')}")
+        self.btn_nav_guide.setText(f"  {i18n.t('nav_guide')}")
+        self.btn_nav_change.setText(f"  {i18n.t('nav_changelog')}")
+
+        self.btn_solve_main.setText(i18n.t("btn_solve_normal") + " (F2)")
+        self.btn_listen_main.setText(i18n.t("btn_solve_listening") + " (F3)")
+        self.btn_capture_main.setText(i18n.t("btn_pick_region"))
+
+        self._render_chat()
 
     def on_save_settings(self):
+        theme = "light" if self.theme_light_rad.isChecked() else "dark"
+        self.apply_theme(theme)
+
+        lang = "en" if self.lang_en.isChecked() else "vi"
+        i18n.set_language(lang)
+        self.config.set("language", lang)
+        self.config.set("startup_mode", self.start_combo.currentData())
+
         self.config.set("api_key", self.key_input.text().strip())
         self.config.set("model", self.model_input.text().strip())
         self.config.set("hide_window_on_capture", self.hide_check.isChecked())
         self.config.set("use_loopback", self.loopback_check.isChecked())
+        self.config.set("prompt_normal", self.prompt_normal_edit.toPlainText().strip())
+        self.config.set("prompt_listening", self.prompt_listen_edit.toPlainText().strip())
+
         self._on_source_changed()
         self.config.save()
-        self.status.showMessage(f"Đã lưu vào {self.config.path}", 6000)
+        self.status.showMessage("Đã lưu cài đặt thành công.", 4000)
 
-    def on_edit_prompts(self):
-        dialog = PromptDialog(self.config, self)
-        if dialog.exec():
-            dialog.apply()
-            self.status.showMessage("Đã cập nhật hướng dẫn cho AI.", 4000)
+    def on_test_api_key(self):
+        key = self.key_input.text().strip()
+        model = self.model_input.text().strip()
+        if not key:
+            self._error("Lỗi", "Vui lòng nhập API Key trước khi kiểm tra.")
+            return
+
+        self.test_api_btn.setEnabled(False)
+        self.status.showMessage(i18n.t("st_testing"))
+
+        client = GeminiClient(key, model)
+        self.test_worker = TestApiWorker(client)
+        self.test_worker.succeeded.connect(self._on_test_api_success)
+        self.test_worker.failed.connect(self._on_test_api_failed)
+        self.test_worker.start()
+
+    def _on_test_api_success(self, text: str):
+        self.test_api_btn.setEnabled(True)
+        QMessageBox.information(self, "SolveX", i18n.t("st_test_success"))
+        self.status.showMessage(i18n.t("st_test_success"), 5000)
+
+    def _on_test_api_failed(self, err: str):
+        self.test_api_btn.setEnabled(True)
+        self._error("Lỗi API Key", i18n.t("st_test_failed") + err)
+
+    def on_check_update(self):
+        self.status.showMessage("Đang kiểm tra cập nhật trên GitHub (hbminh2508-design/SolveX)...")
+        self.update_worker = CheckUpdateWorker()
+        self.update_worker.up_to_date.connect(self._on_up_to_date)
+        self.update_worker.update_available.connect(self._on_update_available)
+        self.update_worker.start()
+
+    def _on_up_to_date(self, ver: str):
+        msg = i18n.t("st_latest_ver", ver)
+        QMessageBox.information(self, "SolveX GitHub Update", msg)
+        self.status.showMessage(msg, 5000)
+
+    def _on_update_available(self, ver: str, changelog: str, url: str):
+        msg = f"Đã có phiên bản mới v{ver} trên GitHub!\n\nRepo: https://github.com/hbminh2508-design/SolveX.git\n\nNội dung:\n{changelog}\n\nBạn có muốn tự động Build .exe mới ngay bây giờ không?"
+        reply = QMessageBox.question(
+            self, "SolveX GitHub Update Available", msg,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self.on_build_exe()
+
+    def on_build_exe(self):
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.status.showMessage("Đang tự động Build file SolveX.exe...")
+        self.build_worker = BuildExeWorker(project_dir)
+        self.build_worker.progress.connect(lambda msg: self.status.showMessage(f"Build: {msg}"))
+        self.build_worker.succeeded.connect(self._on_build_success)
+        self.build_worker.failed.connect(lambda err: self._error("Build Lỗi", err))
+        self.build_worker.start()
+
+    def _on_build_success(self, exe_path: str):
+        msg = f"Đã build xong thành công!\n\nFile .exe được lưu tại:\n{exe_path}"
+        QMessageBox.information(self, "SolveX Build Complete", msg)
+        self.status.showMessage("Build .exe thành công!", 6000)
 
     def _client(self) -> GeminiClient:
         return GeminiClient(
@@ -861,83 +1251,72 @@ class MainWindow(QMainWindow):
             float(self.config.get("temperature", 0.2)),
         )
 
-    # ---------------- chụp màn hình ----------------
+    # ------------------ Ẩn Cửa Sổ Khi Chụp Màn Hình ------------------
     def on_pick_region(self):
+        hidden = self._hide_for_capture()
         self.selector = RegionSelector()
         self.selector.region_selected.connect(self._on_region_selected)
-        hidden = self._hide_for_capture()
-        QTimer.singleShot(220, self.selector.showFullScreen)
-        QTimer.singleShot(240, lambda: self._restore_after_capture(hidden))
+        QTimer.singleShot(300, self.selector.showFullScreen)
+        QTimer.singleShot(350, lambda: self._restore_after_capture(hidden))
 
     def _on_region_selected(self, x, y, w, h):
         self.config.set("region", [x, y, w, h])
         self.config.set("capture_mode", "region")
         self.config.save()
-        self.region_label.setText(f"{w}×{h}")
         index = self.monitor_combo.findData(-1)
         if index >= 0:
             self.monitor_combo.setCurrentIndex(index)
-        self.status.showMessage(f"Đã chọn vùng {w}×{h} tại ({x}, {y}).", 5000)
 
-    def _take_screenshot(self):
-        """Chụp theo cấu hình hiện tại. Trả về PNG bytes hoặc None nếu lỗi."""
+    def _hide_for_capture(self) -> list:
+        hidden = []
+        if self.isVisible():
+            self.hide()
+            hidden.append(self)
+        if self.toolbar.isVisible():
+            self.toolbar.hide()
+            hidden.append(self.toolbar)
+        for _ in range(6):
+            QApplication.processEvents()
+        return hidden
+
+    def _restore_after_capture(self, hidden: list):
+        for widget in hidden:
+            widget.show()
+        if self.toolbar in hidden:
+            self.toolbar.raise_()
+
+    def _async_take_screenshot(self, callback):
         source = self.monitor_combo.currentData()
-        try:
-            if source == -1:
-                region = self.config.get("region")
-                if not region:
-                    raise capture.CaptureError(
-                        "Chưa chọn vùng nào. Bấm 'Chọn vùng…' rồi kéo chuột quanh đề bài."
-                    )
-                png = capture.grab_region(*region)
-            else:
-                png = capture.grab_monitor(source)
-        except Exception as exc:
-            self._error("Không chụp được màn hình", str(exc))
-            return None
+        mode = "region" if source == -1 else "monitor"
+        region = self.config.get("region") if source == -1 else None
 
-        self._show_preview(png)
-        return png
+        self.capture_worker = CaptureWorker(mode, source, region)
+        self.capture_worker.succeeded.connect(callback)
+        self.capture_worker.failed.connect(lambda err: self._error("Chụp ảnh lỗi", err))
+        self.capture_worker.start()
 
-    def _show_preview(self, png: bytes):
-        pixmap = QPixmap()
-        if pixmap.loadFromData(png, "PNG"):
-            # Xoá ảnh cũ trước rồi vẽ lại ngay, để không bị kẹt hình chụp trước
-            # trong lúc cửa sổ vừa ẩn/hiện xong.
-            self.preview.setPixmap(QPixmap())
-            self.preview.setPixmap(
-                pixmap.scaled(
-                    max(1, self.preview.width() - 8),
-                    max(1, self.preview.height() - 8),
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-            )
-            self.preview.repaint()
-
-    # ---------------- giải thường ----------------
+    # ------------------ Giải Bài Thường & Listening ------------------
     def on_solve_normal(self):
         if self._busy():
             return
-        if self.hide_check.isChecked():
-            hidden = self._hide_for_capture()
-            QTimer.singleShot(260, lambda: self._solve_normal_step2(hidden))
-        else:
-            self._solve_normal_step2([])
+        hidden = self._hide_for_capture()
+        QTimer.singleShot(300, lambda: self._async_take_screenshot(
+            lambda png: self._on_solve_normal_got_png(png, hidden)
+        ))
 
-    def _solve_normal_step2(self, hidden):
-        png = self._take_screenshot()
+    def _on_solve_normal_got_png(self, png: bytes, hidden: list):
         self._restore_after_capture(hidden)
-        if png is None:
+        if not png:
             return
 
+        img_path = self.history_mgr.save_image_for_session(self.current_session["id"], png)
         prompt = self.config.get("prompt_normal")
-        self.history.append({"role": "user", "parts": [text_part(prompt), image_part(png)]})
-        self.messages.append(("user", "**Đã chụp đề bài — đang giải…**"))
-        self._render_chat()
-        self._send_to_gemini("Đang đọc đề và giải…")
 
-    # ---------------- giải listening ----------------
+        self.history.append({"role": "user", "parts": [text_part(prompt), image_part(png)]})
+        self.messages.append(("user", i18n.t("chat_user_captured"), img_path))
+        self._render_chat()
+        self._send_to_gemini(i18n.t("chat_thinking"))
+
     def on_listening_clicked(self):
         if self.record_worker is not None and self.record_worker.isRunning():
             self._stop_recording()
@@ -947,15 +1326,14 @@ class MainWindow(QMainWindow):
     def _start_recording(self):
         if self._busy():
             return
-        if self.hide_check.isChecked():
-            hidden = self._hide_for_capture()
-            QTimer.singleShot(260, lambda: self._begin_recording(hidden))
-        else:
-            self._begin_recording([])
+        hidden = self._hide_for_capture()
+        QTimer.singleShot(300, lambda: self._begin_recording(hidden))
 
     def _begin_recording(self, hidden):
-        # Chụp màn hình trước để lấy phần câu hỏi, rồi mới bắt đầu thu.
-        self.pending_shot = self._take_screenshot()
+        self._async_take_screenshot(lambda png: self._on_listening_got_png(png, hidden))
+
+    def _on_listening_got_png(self, png: bytes, hidden: list):
+        self.pending_shot = png
         self._restore_after_capture(hidden)
 
         self.record_worker = RecordWorker(
@@ -972,78 +1350,57 @@ class MainWindow(QMainWindow):
         self._set_recording_ui(True)
         self.level_bar.setVisible(True)
         self.record_label.setVisible(True)
-        self.record_label.setText("Đang thu 00:00")
-        self.status.showMessage("Đang thu âm. Bấm lại nút đỏ khi audio kết thúc.")
 
     def _stop_recording(self):
         if self.record_worker is not None:
             self.record_worker.stop()
         self.record_timer.stop()
-        self.listen_btn.setEnabled(False)
-        self.listen_btn.setText("Đang xử lý…")
-        self.toolbar.listen_btn.setEnabled(False)
-        self.toolbar.listen_btn.setText("⏳ Đang xử lý…")
-        self.status.showMessage("Đang chuẩn bị gửi audio…")
 
     def _tick_record(self):
         self.record_seconds += 1
-        minutes, seconds = divmod(self.record_seconds, 60)
-        self.record_label.setText(f"Đang thu {minutes:02d}:{seconds:02d}")
+        m, s = divmod(self.record_seconds, 60)
+        self.record_label.setText(f"Đang thu {m:02d}:{s:02d}")
 
     def _on_level(self, level: float):
         self.level_bar.setValue(int(level * 100))
 
     def _set_recording_ui(self, recording: bool):
-        """Đồng bộ nút Giải Listening ở cả sidebar và bảng điều khiển nổi."""
-        self.listen_btn.setEnabled(True)
-        self.listen_btn.setText("Dừng & giải   ·   F3" if recording else "Giải Listening   ·   F3")
-        self.listen_btn.setObjectName("Listening" if recording else "Listen")
-        self._restyle(self.listen_btn)
-        self.solve_btn.setEnabled(not recording)
+        self.btn_listen_main.setText("Dừng & Giải (F3)" if recording else i18n.t("btn_solve_listening") + " (F3)")
+        self.toolbar.listen_btn.setText("Dừng & Giải" if recording else i18n.t("btn_solve_listening"))
 
-        self.toolbar.listen_btn.setEnabled(True)
-        self.toolbar.listen_btn.setText("⏹ Dừng & giải" if recording else "🎧 Giải Listening")
-        self.toolbar.listen_btn.setObjectName(
-            "ToolbarBtnListening" if recording else "ToolbarBtn"
-        )
-        self._restyle(self.toolbar.listen_btn)
-        self.toolbar.solve_btn.setEnabled(not recording)
-        self.toolbar.capture_btn.setEnabled(not recording)
+    def _on_record_failed(self, message: str):
+        self._reset_listen_ui()
+        self._error("Lỗi thu âm", message)
 
-    def _reset_listen_button(self):
+    def _reset_listen_ui(self):
         self.record_timer.stop()
         self._set_recording_ui(False)
         self.level_bar.setVisible(False)
         self.record_label.setVisible(False)
         self.record_worker = None
 
-    def _on_record_failed(self, message: str):
-        self._reset_listen_button()
-        self.pending_shot = None
-        self._error("Lỗi thu âm", message)
-
     def _on_record_done(self, wav: bytes, duration: float):
-        self._reset_listen_button()
+        self._reset_listen_ui()
 
         parts = [text_part(self.config.get("prompt_listening"))]
+        img_path = None
         if self.pending_shot:
+            img_path = self.history_mgr.save_image_for_session(self.current_session["id"], self.pending_shot)
             parts.append(image_part(self.pending_shot))
-        self.pending_shot = None
+            self.pending_shot = None
 
         try:
             parts.append(audio_part(wav))
         except Exception as exc:
-            self._error("Audio không gửi được", str(exc))
+            self._error("Audio Error", str(exc))
             return
 
         self.history.append({"role": "user", "parts": parts})
-        self.messages.append(
-            ("user", f"**Đã thu {duration:.0f} giây audio + ảnh câu hỏi — đang xử lý…**")
-        )
+        self.messages.append(("user", i18n.t("chat_user_listened", int(duration)), img_path))
         self._render_chat()
-        self._send_to_gemini("Đang nghe và trả lời…")
+        self._send_to_gemini(i18n.t("chat_listening_thinking"))
 
-    # ---------------- chat ----------------
+    # ------------------ Chat & History ------------------
     def on_send_chat(self):
         if self._busy():
             return
@@ -1052,51 +1409,31 @@ class MainWindow(QMainWindow):
             return
         self.chat_input.clear()
         self.history.append({"role": "user", "parts": [text_part(text)]})
-        self.messages.append(("user", text))
+        self.messages.append(("user", text, None))
         self._render_chat()
-        self._send_to_gemini("Đang trả lời…")
+        self._send_to_gemini(i18n.t("chat_thinking"))
 
     def on_new_chat(self):
+        self.current_session = self.history_mgr.create_session()
         self.history = []
         self.messages = []
         self.pending_shot = None
         self._render_chat()
-        self.status.showMessage("Đã bắt đầu hội thoại mới.", 4000)
+        self.status.showMessage("Đã tạo cuộc trò chuyện mới.", 3000)
 
-    # ---------------- gọi API ----------------
     def _busy(self) -> bool:
         if self.ask_worker is not None and self.ask_worker.isRunning():
-            self.status.showMessage("Đang chờ câu trả lời trước, đợi một chút…", 3000)
             return True
         return False
 
-    def _trim_history(self):
-        """Chỉ giữ ảnh/audio của 2 lượt gần nhất, để request không phình to."""
-        heavy_seen = 0
-        for message in reversed(self.history):
-            parts = message.get("parts", [])
-            has_media = any("inline_data" in p for p in parts)
-            if not has_media:
-                continue
-            heavy_seen += 1
-            if heavy_seen > 2:
-                message["parts"] = [p for p in parts if "inline_data" not in p] or [
-                    text_part("(ảnh/audio của lượt trước đã được lược bỏ)")
-                ]
-
     def _send_to_gemini(self, status_text: str):
-        self._trim_history()
         self.send_btn.setEnabled(False)
-        self.solve_btn.setEnabled(False)
+        self.btn_solve_main.setEnabled(False)
         self.toolbar.solve_btn.setEnabled(False)
-        self.toolbar.listen_btn.setEnabled(False)
         self.status.showMessage(status_text)
-        self.messages.append(("pending", "…"))
+        self.messages.append(("pending", "...", None))
         self._render_chat()
 
-        # Cửa sổ đầy đủ đang ẩn (đang ở chế độ khay hệ thống) thì khung chat
-        # "đang suy nghĩ…" cũng ẩn theo — cần một ô nhỏ riêng báo cho người
-        # dùng biết SolveX đang xử lý chứ không phải bị treo.
         if not self.isVisible():
             self.busy_indicator.set_text(status_text)
             self.busy_indicator.show_near(self.toolbar)
@@ -1108,92 +1445,133 @@ class MainWindow(QMainWindow):
         self.ask_worker.failed.connect(self._on_answer_failed)
         self.ask_worker.start()
 
-    def _drop_pending(self):
+    def _on_answer(self, text: str):
         if self.messages and self.messages[-1][0] == "pending":
             self.messages.pop()
-
-    def _on_answer(self, text: str):
-        self._drop_pending()
-        self.messages.append(("model", text))
+        self.messages.append(("model", text, None))
         self.history.append({"role": "model", "parts": [text_part(text)]})
+        
+        if self.current_session:
+            self.current_session["messages"] = self.messages
+            self.history_mgr.save_session(self.current_session)
+
         self._render_chat()
         self._unlock()
-        self.status.showMessage("Xong.", 4000)
+        self.busy_indicator.hide()
         self._popup_answer(text)
 
     def _on_answer_failed(self, message: str):
-        self._drop_pending()
-        self.messages.append(("error", message))
-        # Bỏ lượt hỏi lỗi ra khỏi lịch sử để lần sau không gửi lại
+        if self.messages and self.messages[-1][0] == "pending":
+            self.messages.pop()
+        self.messages.append(("error", message, None))
         if self.history and self.history[-1]["role"] == "user":
             self.history.pop()
         self._render_chat()
         self._unlock()
-        self.status.showMessage("Có lỗi xảy ra.", 6000)
-
         self.busy_indicator.hide()
-        if not self.isVisible() and self.tray is not None:
-            self.tray.showMessage(
-                "SolveX — có lỗi xảy ra", message, QSystemTrayIcon.MessageIcon.Warning, 6000
-            )
 
     def _unlock(self):
         self.send_btn.setEnabled(True)
-        self.solve_btn.setEnabled(True)
+        self.btn_solve_main.setEnabled(True)
         self.toolbar.solve_btn.setEnabled(True)
-        self.toolbar.listen_btn.setEnabled(True)
         self.ask_worker = None
 
-    # ---------------- hiển thị ----------------
+    def _popup_answer(self, text: str):
+        if self.answer_window is None:
+            self.answer_window = AnswerWindow()
+        self.answer_window.show_answer(text, self.config.get("theme", "dark"))
+
+    # ------------------ Hiển thị Chat ------------------
     def _render_chat(self):
+        theme = self.config.get("theme", "dark")
+        p = style.get_palette(theme)
+
         if not self.messages:
             body = (
-                f"<div style='color:{style.MUTED}; padding:24px 14px;'>"
-                "<p style='font-size:15px;'><b>Bắt đầu thế nào</b></p>"
-                "<p>1. Dán Gemini API key ở góc trên rồi bấm <b>Lưu</b>.</p>"
-                "<p>2. Mở file PDF hoặc trang bài tập, chọn nguồn chụp bên trái.</p>"
-                "<p>3. Bấm <b>Giải thường</b> (F2) để chụp và giải đề trên màn hình.</p>"
-                "<p>4. Với bài nghe: bấm <b>Giải Listening</b> (F3), phát audio, "
-                "bấm lại để dừng và gửi.</p>"
-                "<p>5. Dùng ô chat bên dưới để hỏi thêm về lời giải.</p>"
+                f"<div style='color:{p['MUTED']}; padding:24px 14px;'>"
+                f"<p style='font-size:16px; font-weight:bold; color:{p['AMBER']};'>"
+                f"{i18n.t('chat_welcome_title')}</p>"
+                f"<p>{i18n.t('chat_welcome_desc')}</p>"
                 "</div>"
             )
         else:
             blocks = []
-            for role, text in self.messages:
+            for item in self.messages:
+                role, text = item[0], item[1]
+                img_path = item[2] if len(item) > 2 else None
+
+                img_html = ""
+                if img_path and os.path.exists(img_path):
+                    file_url = Path(img_path).as_uri()
+                    img_html = f"<br><img class='question-img' src='{file_url}' width='320'/><br>"
+
                 if role == "user":
                     blocks.append(
-                        f"<div style='margin:10px 0;'>"
-                        f"<div style='color:{style.AMBER}; font-weight:bold;'>Bạn</div>"
-                        f"<div>{render_markdown(text)}</div></div>"
+                        f"<div style='margin:12px 0;'>"
+                        f"<div style='color:{p['AMBER']}; font-weight:bold;'>{i18n.t('chat_user_label')}</div>"
+                        f"<div>{render_markdown(text)}{img_html}</div></div>"
                     )
                 elif role == "model":
                     blocks.append(
-                        f"<div style='margin:10px 0;'>"
-                        f"<div style='color:{style.TEAL}; font-weight:bold;'>SolveX</div>"
+                        f"<div style='margin:12px 0;'>"
+                        f"<div style='color:{p['TEAL']}; font-weight:bold;'>{i18n.t('chat_solvex_label')}</div>"
                         f"<div>{render_markdown(text)}</div></div>"
                     )
                 elif role == "pending":
                     blocks.append(
-                        f"<div style='margin:10px 0; color:{style.MUTED};'>"
-                        "SolveX đang suy nghĩ…</div>"
+                        f"<div style='margin:12px 0; color:{p['MUTED']};'>"
+                        f"{i18n.t('chat_thinking')}</div>"
                     )
                 else:
                     blocks.append(
-                        f"<div style='margin:10px 0; padding:8px; "
-                        f"border-left:3px solid {style.RED}; color:{style.RED};'>"
-                        f"<b>Lỗi</b><br>{html_lib.escape(text).replace(chr(10), '<br>')}"
-                        "</div>"
+                        f"<div style='margin:12px 0; color:{p['RED']};'><b>Lỗi:</b> {html_lib.escape(text)}</div>"
                     )
             body = "".join(blocks)
 
-        self.chat.setHtml(f"<style>{style.CHAT_CSS}</style>{body}")
+        self.chat.setHtml(f"<style>{style.get_chat_css(theme)}</style>{body}")
         scrollbar = self.chat.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
 
-    def _restyle(self, widget):
-        widget.style().unpolish(widget)
-        widget.style().polish(widget)
+    # ------------------ History Tab Actions ------------------
+    def _refresh_history_list(self):
+        self.hist_list.clear()
+        sessions = self.history_mgr.list_sessions()
+        for s in sessions:
+            title = s["title"] if s["title"] else i18n.t("hist_no_title")
+            item = QListWidgetItem(f"🕒 {s['timestamp']}\n{title}")
+            item.setData(Qt.ItemDataRole.UserRole, s["id"])
+            self.hist_list.addItem(item)
+
+    def on_history_item_clicked(self, item: QListWidgetItem):
+        sid = item.data(Qt.ItemDataRole.UserRole)
+        session = self.history_mgr.load_session(sid)
+        if not session:
+            return
+        self.current_session = session
+        self.messages = session.get("messages", [])
+        
+        theme = self.config.get("theme", "dark")
+        p = style.get_palette(theme)
+        blocks = []
+        for item in self.messages:
+            role, text = item[0], item[1]
+            img_path = item[2] if len(item) > 2 else None
+            img_html = f"<br><img class='question-img' src='{Path(img_path).as_uri()}' width='320'/><br>" if img_path and os.path.exists(img_path) else ""
+            
+            lbl_color = p["AMBER"] if role == "user" else p["TEAL"]
+            blocks.append(f"<div style='margin:8px 0;'><b style='color:{lbl_color};'>{role.upper()}:</b> {render_markdown(text)}{img_html}</div>")
+        
+        self.hist_preview.setHtml(f"<style>{style.get_chat_css(theme)}</style>{''.join(blocks)}")
+
+    def on_clear_history(self):
+        reply = QMessageBox.question(
+            self, "SolveX", i18n.t("hist_clear_confirm"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self.history_mgr.clear_all()
+            self._refresh_history_list()
+            self.hist_preview.clear()
 
     def _error(self, title: str, message: str):
         box = QMessageBox(self)
@@ -1201,11 +1579,8 @@ class MainWindow(QMainWindow):
         box.setWindowTitle(title)
         box.setText(message)
         box.exec()
-        self.status.showMessage(title, 6000)
 
     def closeEvent(self, event):
-        # Đóng cửa sổ đầy đủ chỉ ẩn nó đi — SolveX vẫn sống ở tray/bảng điều
-        # khiển nổi. Chỉ thoát thật khi chọn "Thoát SolveX" từ tray.
         self.on_save_settings()
         event.ignore()
         self.hide()
