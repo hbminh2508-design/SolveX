@@ -1,9 +1,22 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.5.0"
+APP_VERSION = "1.5.1"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.5.1",
+        "2026-08-01",
+        [
+            "Khắc phục triệt để vệt đen đè lên các nhãn chữ (SolveX, Trợ lý AI, Header) trên giao diện ứng dụng.",
+            "Tối ưu Font chữ đa ngôn ngữ chuẩn Unicode ('Segoe UI', 'Segoe UI Variable Text', 'Arial') mượt mà cho Tiếng Việt và Tiếng Anh.",
+            "Tái thiết kế Icon Dark Mode (Mặt trăng khuyết) chính xác hình học và tinh tế hơn.",
+            "Đổi tên mục điều hướng 'Có gì mới' gọn gàng (xoá số phiên bản 1.3.0 cũ trên nhãn nút).",
+            "Bổ sung nút Sao Chép Đáp Án 1-Click trong cửa sổ hiển thị kết quả giải bài.",
+            "Bổ sung ô Tìm kiếm từ khoá tức thì trong Lịch Sử Trò Chuyện.",
+            "Tối ưu hiển thị Icon khay hệ thống (System Tray) nét căng chuẩn DPI.",
+        ],
+    ),
     (
         "1.5.0",
         "2026-08-01",

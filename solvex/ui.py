@@ -1,5 +1,6 @@
-"""Giao diện SolveX v1.5.0 — WinUI 3 Fluent Design, Đa Ngôn Ngữ,
-Sửa lỗi đồng bộ Cài đặt 100%, GitHub Auto Update (hbminh2508-design/SolveX).
+"""Giao diện SolveX v1.5.1 — WinUI 3 Fluent Design, Đa Ngôn Ngữ,
+Triệt tiêu vệt đen UI, Sao chép đáp án 1-Click, Bộ lọc Lịch sử,
+GitHub Auto Update (hbminh2508-design/SolveX).
 """
 
 import html as html_lib
@@ -347,6 +348,7 @@ class AnswerWindow(QDialog):
         self.setWindowIcon(build_app_icon())
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
         self.resize(640, 560)
+        self.raw_markdown = ""
 
         layout = QVBoxLayout(self)
         self.browser = QTextBrowser()
@@ -355,13 +357,25 @@ class AnswerWindow(QDialog):
         layout.addWidget(self.browser, 1)
 
         buttons = QHBoxLayout()
+        self.copy_btn = QPushButton(i18n.t("btn_copy_answer"))
+        self.copy_btn.setIcon(IconFactory.draw_icon("solve", style.AMBER, 16))
+        self.copy_btn.clicked.connect(self._copy_to_clipboard)
+        buttons.addWidget(self.copy_btn)
+
         buttons.addStretch(1)
         close_btn = QPushButton(i18n.t("btn_close"))
         close_btn.clicked.connect(self.close)
         buttons.addWidget(close_btn)
         layout.addLayout(buttons)
 
+    def _copy_to_clipboard(self):
+        cb = QApplication.clipboard()
+        cb.setText(self.raw_markdown)
+        self.copy_btn.setText("Đã sao chép! ✓")
+        QTimer.singleShot(2000, lambda: self.copy_btn.setText(i18n.t("btn_copy_answer")))
+
     def show_answer(self, markdown_text: str, theme: str = "dark"):
+        self.raw_markdown = markdown_text
         self.setStyleSheet(style.get_stylesheet(theme))
         self.browser.setHtml(f"<style>{style.get_chat_css(theme)}</style>{render_markdown(markdown_text)}")
         self.show()
@@ -424,7 +438,7 @@ class BusyIndicator(QWidget):
 
 
 # --------------------------------------------------------------------------
-# Cửa sổ chính MainWindow (WinUI 3 Fluent Design v1.5.0)
+# Cửa sổ chính MainWindow (WinUI 3 Fluent Design v1.5.1)
 # --------------------------------------------------------------------------
 class MainWindow(QMainWindow):
     SYSTEM_INSTRUCTION = (
@@ -571,8 +585,11 @@ class MainWindow(QMainWindow):
         if not QSystemTrayIcon.isSystemTrayAvailable():
             self.tray = None
             return
-        self.tray = QSystemTrayIcon(build_app_icon(), self)
-        self.tray.setToolTip("SolveX")
+        tray_icon = IconFactory.draw_icon("tray", style.AMBER, 32)
+        if tray_icon.isNull():
+            tray_icon = build_app_icon()
+        self.tray = QSystemTrayIcon(tray_icon, self)
+        self.tray.setToolTip("SolveX v" + APP_VERSION)
 
         menu = QMenu()
         menu.addAction("Ẩn/Hiện Top Bar", self._toggle_toolbar)
@@ -643,7 +660,9 @@ class MainWindow(QMainWindow):
         brand_box = QHBoxLayout()
         logo = QLabel()
         logo.setPixmap(build_app_icon().pixmap(24, 24))
+        logo.setStyleSheet("background: transparent;")
         brand_box.addWidget(logo)
+        
         title_box = QVBoxLayout()
         brand_lbl = QLabel("SolveX")
         brand_lbl.setObjectName("Brand")
@@ -678,7 +697,7 @@ class MainWindow(QMainWindow):
         r_layout.setContentsMargins(0, 0, 0, 0)
         r_layout.setSpacing(0)
 
-        # Header Bar Chuẩn WinUI 3: "SolveX v1.5.0"
+        # Header Bar Chuẩn WinUI 3: "SolveX v1.5.1" (SỬA TRIỆT ĐỂ VỆT ĐEN)
         header = QFrame()
         header.setObjectName("HeaderBar")
         header.setFixedHeight(40)
@@ -687,7 +706,7 @@ class MainWindow(QMainWindow):
         h_layout.setSpacing(10)
 
         page_title = QLabel("SolveX v" + APP_VERSION)
-        page_title.setStyleSheet("font-weight:600; font-size:13px; color:" + style.MUTED + ";")
+        page_title.setStyleSheet("font-weight:600; font-size:13px; background:transparent; color:" + style.MUTED + ";")
         h_layout.addWidget(page_title)
         h_layout.addStretch(1)
 
@@ -791,7 +810,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(input_row)
         return page
 
-    # Tab 2: History Page
+    # Tab 2: History Page (SỬA VỆT ĐEN & BỔ SUNG Ô TÌM KIẾM TỪ KHOÁ)
     def _build_history_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -803,6 +822,12 @@ class MainWindow(QMainWindow):
         title.setObjectName("Brand")
         header_row.addWidget(title)
         header_row.addStretch(1)
+
+        self.hist_search_input = QLineEdit()
+        self.hist_search_input.setPlaceholderText(i18n.t("hist_search_ph"))
+        self.hist_search_input.setFixedWidth(220)
+        self.hist_search_input.textChanged.connect(self._filter_history_list)
+        header_row.addWidget(self.hist_search_input)
 
         clear_btn = QPushButton(i18n.t("btn_clear_all"))
         clear_btn.setIcon(IconFactory.draw_icon("trash", style.RED, 16))
@@ -1008,9 +1033,10 @@ class MainWindow(QMainWindow):
             c_box.addWidget(ic_lbl)
             text_box = QVBoxLayout()
             st_title = QLabel(i18n.t(t_key))
-            st_title.setStyleSheet("font-size:15px; font-weight:bold;")
+            st_title.setStyleSheet("font-size:15px; font-weight:bold; background:transparent;")
             st_desc = QLabel(i18n.t(d_key))
             st_desc.setWordWrap(True)
+            st_desc.setStyleSheet("background:transparent;")
             text_box.addWidget(st_title)
             text_box.addWidget(st_desc)
             c_box.addLayout(text_box, 1)
@@ -1020,7 +1046,7 @@ class MainWindow(QMainWindow):
         sc_card.setObjectName("Card")
         sc_layout = QVBoxLayout(sc_card)
         sc_title = QLabel(i18n.t("guide_shortcuts"))
-        sc_title.setStyleSheet("font-size:15px; font-weight:bold; color:" + style.AMBER + ";")
+        sc_title.setStyleSheet("font-size:15px; font-weight:bold; background:transparent; color:" + style.AMBER + ";")
         sc_layout.addWidget(sc_title)
         sc_layout.addWidget(QLabel(i18n.t("guide_sc_f2")))
         sc_layout.addWidget(QLabel(i18n.t("guide_sc_f3")))
@@ -1050,7 +1076,7 @@ class MainWindow(QMainWindow):
         lbl.setObjectName("SectionLabel")
         return lbl
 
-    # ------------------ Quản lý Config UI (ĐÃ SỬA CHÍNH XÁC ĐỒNG BỘ) ------------------
+    # ------------------ Quản lý Config UI ------------------
     def _populate_monitors(self):
         self.monitor_combo.clear()
         try:
@@ -1491,7 +1517,7 @@ class MainWindow(QMainWindow):
         scrollbar = self.chat.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
 
-    # ------------------ History Tab Actions ------------------
+    # ------------------ History Tab Actions & Search Filter ------------------
     def _refresh_history_list(self):
         self.hist_list.clear()
         sessions = self.history_mgr.list_sessions()
@@ -1499,7 +1525,16 @@ class MainWindow(QMainWindow):
             title = s["title"] if s["title"] else i18n.t("hist_no_title")
             item = QListWidgetItem(f"🕒 {s['timestamp']}\n{title}")
             item.setData(Qt.ItemDataRole.UserRole, s["id"])
+            item.setData(Qt.ItemDataRole.UserRole + 1, title.lower())
             self.hist_list.addItem(item)
+        self._filter_history_list()
+
+    def _filter_history_list(self):
+        query = self.hist_search_input.text().strip().lower() if hasattr(self, "hist_search_input") else ""
+        for i in range(self.hist_list.count()):
+            item = self.hist_list.item(i)
+            search_key = item.data(Qt.ItemDataRole.UserRole + 1) or ""
+            item.setHidden(bool(query and query not in search_key))
 
     def on_history_item_clicked(self, item: QListWidgetItem):
         sid = item.data(Qt.ItemDataRole.UserRole)

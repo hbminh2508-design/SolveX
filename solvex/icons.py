@@ -138,14 +138,17 @@ class IconFactory:
             painter.drawEllipse(QPointF(cx, cy), r * 0.45, r)
 
         elif name == "moon":
-            # Icon mặt trăng lưỡi liềm WinUI 3
+            # Icon mặt trăng lưỡi liềm (Dark Mode) vẽ lại chuẩn mượt
             path = QPainterPath()
             cx, cy = rect.center().x(), rect.center().y()
             r = rect.width() * 0.42
-            path.arcMoveTo(QRectF(cx - r, cy - r, 2 * r, 2 * r), 45)
-            path.arcTo(QRectF(cx - r, cy - r, 2 * r, 2 * r), 45, 260)
-            path.quadTo(QPointF(cx + r * 0.2, cy), QPointF(cx + r * 0.32, cy - r * 0.85))
-            painter.drawPath(path)
+            path.addEllipse(QPointF(cx, cy), r, r)
+            
+            # Cắt lề hình tròn phụ để tạo hình trăng khuyết mềm mại
+            cut_path = QPainterPath()
+            cut_path.addEllipse(QPointF(cx + r * 0.42, cy - r * 0.2), r * 0.88, r * 0.88)
+            moon_path = path.subtracted(cut_path)
+            painter.drawPath(moon_path)
 
         elif name == "sun":
             # Icon mặt trời WinUI 3
@@ -212,6 +215,7 @@ class IconFactory:
             painter.drawPath(path)
 
         elif name == "tray":
+            # Icon thu khay hệ thống nét căng 64x64
             x, y, w, h = rect.x(), rect.y(), rect.width(), rect.height()
             path = QPainterPath()
             path.moveTo(x, y + h * 0.35)
@@ -222,6 +226,12 @@ class IconFactory:
             path.lineTo(x + w * 0.32, y + h * 0.62)
             path.lineTo(x + w * 0.68, y + h * 0.62)
             path.lineTo(x + w * 0.82, y + h * 0.35)
+            # Mũi tên thu xuống
+            path.moveTo(w * 0.5, y + 2)
+            path.lineTo(w * 0.5, y + h * 0.48)
+            path.lineTo(w * 0.38, y + h * 0.36)
+            path.moveTo(w * 0.5, y + h * 0.48)
+            path.lineTo(w * 0.62, y + h * 0.36)
             painter.drawPath(path)
 
         elif name == "minimize":

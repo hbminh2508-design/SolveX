@@ -1,8 +1,9 @@
 """Bảng màu và stylesheet chuẩn WinUI 3 Fluent Design (Dark & Light Mode).
-Góc bo 14px mềm mại, phẳng, thanh lịch, giao diện chuẩn Windows 11 Fluent.
+Góc bo 14px mềm mại, phẳng, thanh lịch, font chữ đa ngôn ngữ VI/EN chuẩn Unicode,
+triệt tiêu hoàn toàn vệt đen UI trên nhãn chữ.
 """
 
-FONT_STACK = '"Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", sans-serif'
+FONT_STACK = '"Segoe UI", "Segoe UI Variable Text", "Arial", sans-serif'
 
 DARK_PALETTE = {
     "INK": "#1c1c1f",
@@ -102,6 +103,10 @@ QFrame#NavSidebar {{
     margin: 10px 4px 10px 10px;
 }}
 
+QFrame#NavSidebar QLabel {{
+    background: transparent;
+}}
+
 QPushButton#NavBtn {{
     background: transparent;
     border: none;
@@ -123,10 +128,13 @@ QPushButton#NavBtn:checked {{
     border-left: 3.5px solid {p['AMBER']};
 }}
 
-/* Header Bar */
+/* Header Bar — SỬA TRIỆT ĐỂ VỆT ĐEN */
 QFrame#HeaderBar {{
     background: {p['PANEL']};
     border-bottom: 1px solid {p['BORDER']};
+}}
+QFrame#HeaderBar QLabel {{
+    background: transparent;
 }}
 
 /* Panels and Cards */
@@ -136,18 +144,25 @@ QFrame#Panel, QFrame#Card {{
     border-radius: 14px;
 }}
 
+QLabel {{
+    background: transparent;
+}}
+
 QLabel#Brand {{
+    background: transparent;
     font-size: 20px;
     font-weight: 700;
     color: {p['TEXT']};
 }}
 
 QLabel#Tagline {{
+    background: transparent;
     color: {p['MUTED']};
     font-size: 11px;
 }}
 
 QLabel#SectionLabel {{
+    background: transparent;
     color: {p['MUTED']};
     font-size: 11px;
     font-weight: 700;
@@ -237,7 +252,7 @@ QPushButton#Send {{
     border-radius: 8px;
 }}
 
-QCheckBox, QRadioButton {{ spacing: 8px; color: {p['TEXT']}; }}
+QCheckBox, QRadioButton {{ spacing: 8px; color: {p['TEXT']}; background: transparent; }}
 QCheckBox::indicator, QRadioButton::indicator {{
     width: 16px; height: 16px;
     border: 1px solid {p['BORDER']};
@@ -306,6 +321,7 @@ QLabel#CompactTitle {{
     color: {p['MUTED']};
     font-size: 12px;
     font-weight: 600;
+    background: transparent;
 }}
 QPushButton#CaptionBtn, QPushButton#CaptionBtnClose {{
     background: transparent;
@@ -337,6 +353,7 @@ QLabel#BusyLabel {{
     color: {p['TEXT']};
     font-size: 12px;
     font-weight: 600;
+    background: transparent;
 }}
 QProgressBar {{
     background: {p['PANEL_LIGHT']};

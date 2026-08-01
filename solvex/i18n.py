@@ -1,300 +1,227 @@
-"""Hệ thống đa ngôn ngữ (Internationalization / i18n) cho SolveX.
-Hỗ trợ Tiếng Việt (vi) và English (en).
-"""
+"""Quản lý đa ngôn ngữ (Tiếng Việt / English) cho SolveX."""
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
-TRANSLATIONS = {
+STRINGS = {
     "vi": {
-        # Menu Bar
+        "app_title": "SolveX",
+        "app_tagline": "Trợ lý làm bài tập AI",
+        "nav_chat": "Chat / Giải bài",
+        "nav_history": "Lịch sử trò chuyện",
+        "nav_settings": "Cài đặt hệ thống",
+        "nav_guide": "Hướng dẫn sử dụng",
+        "nav_changelog": "Có gì mới",
         "menu_file": "Tệp",
         "menu_view": "Giao diện",
         "menu_language": "Ngôn ngữ",
         "menu_settings": "Cài đặt",
         "menu_help": "Trợ giúp",
         "menu_exit": "Thoát ứng dụng",
-
-        # Navigation & Tab Titles
-        "nav_chat": "Chat & Giải bài",
-        "nav_history": "Lịch sử trò chuyện",
-        "nav_settings": "Cài đặt hệ thống",
-        "nav_guide": "Hướng dẫn sử dụng",
-        "nav_changelog": "Có gì mới (v1.3.0)",
-        
-        # Header & Brand
-        "app_title": "SolveX",
-        "app_tagline": "Trợ lý làm bài tập AI",
-        "status_ready": "Sẵn sàng. Nhập API key để bắt đầu.",
-        
-        # Header Quick Action Toolbar
-        "quick_theme": "Chủ đề",
-        "quick_theme_dark": "Dark Mode",
-        "quick_theme_light": "Light Mode",
+        "quick_theme_dark": "Giao diện Tối (Dark Mode)",
+        "quick_theme_light": "Giao diện Sáng (Light Mode)",
         "quick_lang": "Ngôn ngữ",
         "quick_compact": "Top Bar nổi",
         "quick_update": "Cập nhật GitHub",
-        
-        # Action Buttons
-        "btn_capture": "Chụp màn hình",
         "btn_solve_normal": "Giải bài",
-        "btn_solve_listening": "Giải Listening",
-        "btn_stop_listen": "Dừng & Giải",
-        "btn_recording": "Đang thu audio...",
+        "btn_solve_listening": "Bài nghe (Listening)",
+        "btn_pick_region": "Chụp vùng tuỳ ý",
+        "btn_capture": "Chụp đề",
         "btn_send": "Gửi",
         "btn_new_chat": "Hội thoại mới",
+        "btn_clear_all": "Xoá tất cả lịch sử",
         "btn_save": "Lưu cài đặt",
-        "btn_test_api": "Kiểm tra API",
-        "btn_check_update": "Kiểm tra GitHub Update",
-        "btn_build_exe": "Tự động Build .exe",
-        "btn_edit_prompts": "Hướng dẫn AI...",
-        "btn_pick_region": "Chọn vùng...",
+        "btn_test_api": "Kiểm tra kết nối API Key",
+        "btn_check_update": "Kiểm tra Cập nhật (GitHub)",
+        "btn_build_exe": "Tự động Build file .exe mới",
         "btn_show": "Hiện",
         "btn_hide": "Ẩn",
         "btn_close": "Đóng",
-        "btn_delete": "Xoá",
-        "btn_clear_all": "Xoá tất cả",
-        "btn_view_full": "Xem ảnh lớn",
-        
-        # Compact Toolbar Tooltips
-        "tip_capture": "Chọn vùng màn hình cần chụp",
-        "tip_solve": "Chụp đề đang hiện và giải (F2)",
-        "tip_listen": "Thu âm bài nghe rồi giải (F3)",
-        "tip_history": "Mở lịch sử trò chuyện",
-        "tip_settings": "Mở cài đặt",
-        "tip_guide": "Mở hướng dẫn sử dụng",
-        "tip_changelog": "Xem nhật ký cập nhật v1.3.0",
-        "tip_tray": "Thu xuống khay hệ thống",
-        
-        # Settings UI
+        "btn_copy_answer": "Sao chép đáp án",
+        "chat_welcome_title": "Chào mừng bạn đến với SolveX v1.5.1!",
+        "chat_welcome_desc": "Bấm <b>[Giải bài] (F2)</b> để chụp màn hình và nhận lời giải từ AI Gemini.<br>Bấm <b>[Bài nghe] (F3)</b> để vừa chụp hình vừa ghi âm bài nghe Tiếng Anh.",
+        "chat_input_ph": "Nhập tin nhắn hoặc câu hỏi tiếp theo... (Ctrl+Enter để gửi)",
+        "chat_user_label": "Bạn:",
+        "chat_solvex_label": "SolveX AI:",
+        "chat_user_captured": "[Đã chụp màn hình và gửi đề bài]",
+        "chat_user_listened": "[Đã chụp màn hình và thu âm {0} giây]",
+        "chat_thinking": "SolveX đang suy nghĩ...",
+        "chat_listening_thinking": "SolveX đang xử lý ảnh & âm thanh bài nghe...",
         "st_section_general": "CÀI ĐẶT CHUNG & GIAO DIỆN",
         "st_theme": "Chủ đề giao diện (Theme)",
         "st_theme_dark": "Giao diện Tối (Dark Mode)",
         "st_theme_light": "Giao diện Sáng (Light Mode)",
         "st_language": "Ngôn ngữ giao diện",
         "st_startup_mode": "Chế độ hiển thị khi khởi động",
-        "st_startup_full": "Cửa sổ đầy đủ (Main Window)",
+        "st_startup_full": "Cửa sổ đầy đủ (Full Window)",
         "st_startup_compact": "Thanh thu gọn trên Top (Compact Bar)",
-        "st_startup_tray": "Thu gọn vào khay hệ thống (System Tray)",
-        
+        "st_startup_tray": "Khởi động ẩn dưới Khay hệ thống (System Tray)",
         "st_section_api": "CẤU HÌNH GEMINI API",
         "st_api_key": "Gemini API Key",
-        "st_api_key_ph": "Dán Gemini API key từ Google AI Studio vào đây",
+        "st_api_key_ph": "Dán Gemini API Key vào đây (AI Studio)",
         "st_model": "Gemini Model",
-        "st_test_success": "Kết nối thành công! API Key hoạt động bình thường.",
-        "st_test_failed": "Kết nối thất bại: ",
-        "st_testing": "Đang kiểm tra kết nối API...",
-        
         "st_section_capture": "NGUỒN CHỤP & ÂM THANH",
         "st_capture_source": "Nguồn chụp màn hình",
-        "st_monitor_primary": "Màn hình chính",
+        "st_hide_on_capture": "Luôn tự động ẩn SolveX khi bấm chụp màn hình",
+        "st_loopback": "Thu âm thanh phát ra từ máy tính (Loopback — Bài nghe Online)",
+        "st_section_prompts": "CẤU HÌNH PROMPT LÀM BÀI",
+        "st_prompt_normal_lbl": "Prompt Giải bài thường (F2)",
+        "st_prompt_listen_lbl": "Prompt Giải bài nghe (F3)",
+        "st_section_update": "CẬP NHẬT ONLINE & BUILD",
+        "st_testing": "Đang kết nối tới Gemini API...",
+        "st_test_success": "Kết nối Gemini API Key thành công! AI đã sẵn sàng.",
+        "st_test_failed": "Lỗi kết nối API Key: ",
+        "st_monitor_primary": "Màn hình chính (Primary)",
+        "st_monitor_num": "Màn hình {0}",
         "st_monitor_all": "Tất cả màn hình",
         "st_monitor_region": "Vùng chọn tuỳ ý",
-        "st_monitor_num": "Màn hình {}",
-        "st_region_none": "chưa chọn",
-        "st_hide_on_capture": "Luôn tự động ẩn SolveX khi bấm chụp màn hình",
-        "st_loopback": "Thu âm từ hệ thống / loa (bỏ tick để thu Micro)",
-        
-        "st_section_prompts": "HƯỚNG DẪN DÀNH CHO AI (PROMPTS)",
-        "st_prompt_normal_lbl": "Prompt cho nút Giải thường:",
-        "st_prompt_listen_lbl": "Prompt cho nút Giải Listening:",
-        "st_restore_defaults": "Khôi phục mặc định",
-        
-        "st_section_update": "CẬP NHẬT ONLINE GITHUB & BUILD",
-        "st_update_status": "Trạng thái cập nhật GitHub (hbminh2508-design/SolveX)",
-        "st_latest_ver": "Phiên bản hiện tại ({}) là mới nhất trên GitHub!",
-        
-        # History UI
         "hist_title": "Lịch sử trò chuyện",
-        "hist_empty": "Chưa có hội thoại nào được lưu.",
-        "hist_search_ph": "Tìm kiếm hội thoại...",
-        "hist_delete_confirm": "Bạn có chắc muốn xoá hội thoại này?",
-        "hist_clear_confirm": "Bạn có chắc muốn xoá TOÀN BỘ lịch sử trò chuyện?",
-        "hist_question_img": "Ảnh đề bài đã chụp:",
-        "hist_no_title": "Hội thoại không tên",
-        
-        # Chat UI
-        "chat_welcome_title": "Chào mừng bạn đến với SolveX v1.3.0",
-        "chat_welcome_desc": "1. Dán Gemini API key trong phần Cài đặt.<br>2. Bấm <b>Giải bài (F2)</b> hoặc <b>Giải Listening (F3)</b>.<br>3. Cửa sổ SolveX sẽ tự động ẩn để bạn nhìn rõ đề bài trên màn hình.<br>4. Lời giải và ảnh chụp sẽ hiển thị ngay tại đây.",
-        "chat_input_ph": "Hỏi thêm về bài vừa giải... (Ctrl+Enter để gửi)",
-        "chat_user_label": "Bạn",
-        "chat_solvex_label": "SolveX",
-        "chat_thinking": "SolveX đang đọc đề và suy nghĩ...",
-        "chat_listening_thinking": "SolveX đang nghe audio và giải bài...",
-        "chat_user_captured": "Đã chụp đề bài — đang giải...",
-        "chat_user_listened": "Đã thu {} giây audio + ảnh câu hỏi — đang xử lý...",
-        
-        # User Guide
-        "guide_title": "Hướng dẫn sử dụng SolveX v1.3.0",
+        "hist_clear_confirm": "Bạn có chắc chắn muốn xoá toàn bộ lịch sử trò chuyện không?",
+        "hist_no_title": "Hội thoại không tiêu đề",
+        "hist_search_ph": "Tìm kiếm câu hỏi cũ...",
+        "guide_title": "Hướng dẫn sử dụng SolveX",
         "guide_step1_title": "1. Nhập API Key",
-        "guide_step1_desc": "Vào phần <b>Cài đặt</b>, dán API key lấy miễn phí tại <i>Google AI Studio</i> và bấm <b>Kiểm tra API</b>.",
-        "guide_step2_title": "2. Giải bài tập qua ảnh (F2)",
-        "guide_step2_desc": "Mở đề bài trên màn hình, bấm nút <b>Giải bài</b> hoặc phím <code>F2</code>. Cửa sổ ứng dụng sẽ tự động ẩn đi để bạn chụp chính xác góc đề bài.",
-        "guide_step3_title": "3. Giải bài nghe Listening (F3)",
-        "guide_step3_desc": "Bấm nút <b>Giải Listening</b> hoặc phím <code>F3</code> để bắt đầu thu âm tiếng loa hoặc micro. Bấm lần nữa để dừng thu và gửi audio cho SolveX dịch & làm bài.",
-        "guide_step4_title": "4. Menu Bar & Floating Sidebar 2026",
-        "guide_step4_desc": "Dùng Menu Bar trên cùng hoặc thanh Sidebar nổi bo góc 14px hiện đại để mở nhanh Cài đặt, Lịch sử, đổi Dark/Light theme và Kiểm tra GitHub Update.",
-        "guide_shortcuts": "Bảng phím tắt nhanh",
-        "guide_sc_f2": "F2: Chụp & Giải bài thường",
-        "guide_sc_f3": "F3: Bắt đầu / Dừng thu âm Listening",
-        "guide_sc_ctrl_enter": "Ctrl + Enter: Gửi tin nhắn hỏi thêm",
+        "guide_step1_desc": "Vào mục Cài đặt hệ thống -> Dán API Key miễn phí lấy từ Google AI Studio.",
+        "guide_step2_title": "2. Giải bài nhanh (F2)",
+        "guide_step2_desc": "Nhấn phím F2 hoặc nút [Giải bài]. SolveX tự ẩn đi, chụp hình đề bài và hiển thị lời giải từng bước.",
+        "guide_step3_title": "3. Giải bài nghe (F3)",
+        "guide_step3_desc": "Nhấn F3 để chụp hình và bắt đầu ghi âm đoạn hội thoại nghe. Bấm F3 lần nữa để kết thúc và nhận đáp án.",
+        "guide_step4_title": "4. Thanh thu gọn trên Top",
+        "guide_step4_desc": "Bật thanh Top Bar thu gọn để màn hình luôn gọn gàng khi học tập trực tuyến.",
+        "guide_shortcuts": "Bảng phím tắt tiện lợi",
+        "guide_sc_f2": "• F2: Chụp & Giải bài thường nhanh",
+        "guide_sc_f3": "• F3: Bật/Tắt thu âm Bài nghe",
+        "guide_sc_ctrl_enter": "• Ctrl + Enter: Gửi câu hỏi trong ô nhập",
+        "status_ready": "SolveX v1.5.1 đã sẵn sàng.",
+        "tip_capture": "Chụp vùng tuỳ ý",
+        "tip_solve": "Giải bài chụp màn hình (F2)",
+        "tip_listen": "Giải bài nghe (F3)",
+        "tip_history": "Mở Lịch sử trò chuyện",
+        "tip_settings": "Cài đặt hệ thống",
+        "tip_changelog": "Xem nhật ký cập nhật",
+        "tip_tray": "Thu xuống khay hệ thống",
+        "st_latest_ver": "Phiên bản hiện tại ({0}) là mới nhất trên GitHub!",
     },
-
     "en": {
-        # Menu Bar
+        "app_title": "SolveX",
+        "app_tagline": "AI Homework Assistant",
+        "nav_chat": "Chat / Solver",
+        "nav_history": "Chat History",
+        "nav_settings": "System Settings",
+        "nav_guide": "User Guide",
+        "nav_changelog": "What's new",
         "menu_file": "File",
         "menu_view": "View",
         "menu_language": "Language",
         "menu_settings": "Settings",
         "menu_help": "Help",
         "menu_exit": "Exit Application",
-
-        # Navigation & Tab Titles
-        "nav_chat": "Chat & Solve",
-        "nav_history": "History",
-        "nav_settings": "Settings",
-        "nav_guide": "User Guide",
-        "nav_changelog": "What's New (v1.3.0)",
-        
-        # Header & Brand
-        "app_title": "SolveX",
-        "app_tagline": "AI Homework Assistant",
-        "status_ready": "Ready. Enter API key to start.",
-        
-        # Header Quick Action Toolbar
-        "quick_theme": "Theme",
         "quick_theme_dark": "Dark Mode",
         "quick_theme_light": "Light Mode",
         "quick_lang": "Language",
         "quick_compact": "Top Bar",
         "quick_update": "GitHub Update",
-        
-        # Action Buttons
-        "btn_capture": "Capture Screen",
-        "btn_solve_normal": "Solve Homework",
-        "btn_solve_listening": "Solve Listening",
-        "btn_stop_listen": "Stop & Solve",
-        "btn_recording": "Recording audio...",
+        "btn_solve_normal": "Solve Problem",
+        "btn_solve_listening": "Listening Test",
+        "btn_pick_region": "Select Region",
+        "btn_capture": "Capture",
         "btn_send": "Send",
         "btn_new_chat": "New Chat",
+        "btn_clear_all": "Clear All History",
         "btn_save": "Save Settings",
         "btn_test_api": "Test API Key",
-        "btn_check_update": "Check GitHub Update",
+        "btn_check_update": "Check Update (GitHub)",
         "btn_build_exe": "Auto Build .exe",
-        "btn_edit_prompts": "AI Prompts...",
-        "btn_pick_region": "Select Region...",
         "btn_show": "Show",
         "btn_hide": "Hide",
         "btn_close": "Close",
-        "btn_delete": "Delete",
-        "btn_clear_all": "Clear All",
-        "btn_view_full": "View Full Image",
-        
-        # Compact Toolbar Tooltips
-        "tip_capture": "Select screen region to capture",
-        "tip_solve": "Capture current screen and solve (F2)",
-        "tip_listen": "Record audio and solve listening (F3)",
-        "tip_history": "Open conversation history",
-        "tip_settings": "Open settings",
-        "tip_guide": "Open user guide",
-        "tip_changelog": "View v1.3.0 release notes",
-        "tip_tray": "Minimize to system tray",
-        
-        # Settings UI
-        "st_section_general": "GENERAL & THEME",
-        "st_theme": "UI Theme",
+        "btn_copy_answer": "Copy Answer",
+        "chat_welcome_title": "Welcome to SolveX v1.5.1!",
+        "chat_welcome_desc": "Press <b>[Solve Problem] (F2)</b> to capture screen and receive step-by-step AI solutions.<br>Press <b>[Listening Test] (F3)</b> to record audio and capture screen together.",
+        "chat_input_ph": "Type your message or follow-up question... (Ctrl+Enter to send)",
+        "chat_user_label": "You:",
+        "chat_solvex_label": "SolveX AI:",
+        "chat_user_captured": "[Screen captured and problem submitted]",
+        "chat_user_listened": "[Screen captured and audio recorded for {0} seconds]",
+        "chat_thinking": "SolveX is thinking...",
+        "chat_listening_thinking": "SolveX is processing audio & image...",
+        "st_section_general": "GENERAL & APPEARANCE",
+        "st_theme": "App Theme",
         "st_theme_dark": "Dark Mode",
         "st_theme_light": "Light Mode",
-        "st_language": "Interface Language",
-        "st_startup_mode": "Startup Mode",
-        "st_startup_full": "Full Application Window",
-        "st_startup_compact": "Compact Floating Top Bar",
-        "st_startup_tray": "System Tray Only",
-        
-        # API Section
+        "st_language": "Display Language",
+        "st_startup_mode": "Startup Display Mode",
+        "st_startup_full": "Full Window",
+        "st_startup_compact": "Top Compact Bar",
+        "st_startup_tray": "Start Minimized to System Tray",
         "st_section_api": "GEMINI API CONFIGURATION",
         "st_api_key": "Gemini API Key",
-        "st_api_key_ph": "Paste Gemini API key from Google AI Studio here",
+        "st_api_key_ph": "Paste your Gemini API Key here (Google AI Studio)",
         "st_model": "Gemini Model",
-        "st_test_success": "Connection successful! API Key is working properly.",
-        "st_test_failed": "Connection failed: ",
-        "st_testing": "Testing API connection...",
-        
-        # Capture Section
-        "st_section_capture": "CAPTURE SOURCE & AUDIO",
-        "st_capture_source": "Capture Source",
+        "st_section_capture": "CAPTURE & AUDIO SOURCE",
+        "st_capture_source": "Screen Capture Source",
+        "st_hide_on_capture": "Always hide SolveX window during screen capture",
+        "st_loopback": "Capture System Speaker Output (Loopback Audio)",
+        "st_section_prompts": "AI SOLVER PROMPTS",
+        "st_prompt_normal_lbl": "Normal Problem Solver Prompt (F2)",
+        "st_prompt_listen_lbl": "Listening Problem Solver Prompt (F3)",
+        "st_section_update": "ONLINE UPDATE & BUILD",
+        "st_testing": "Connecting to Gemini API...",
+        "st_test_success": "Gemini API Key verified successfully! AI is ready.",
+        "st_test_failed": "API Key connection error: ",
         "st_monitor_primary": "Primary Monitor",
+        "st_monitor_num": "Monitor {0}",
         "st_monitor_all": "All Monitors",
-        "st_monitor_region": "Custom Selected Region",
-        "st_monitor_num": "Monitor {}",
-        "st_region_none": "not selected",
-        "st_hide_on_capture": "Always automatically hide SolveX during capture",
-        "st_loopback": "Record System Audio / Speaker (uncheck for Microphone)",
-        
-        # Prompts Section
-        "st_section_prompts": "AI SYSTEM INSTRUCTIONS (PROMPTS)",
-        "st_prompt_normal_lbl": "Instruction for Normal Solver:",
-        "st_prompt_listen_lbl": "Instruction for Listening Solver:",
-        "st_restore_defaults": "Restore Defaults",
-        
-        "st_section_update": "ONLINE GITHUB UPDATE & BUILD",
-        "st_update_status": "GitHub Update Status (hbminh2508-design/SolveX)",
-        "st_latest_ver": "Current version ({}) is up to date on GitHub!",
-        
-        # History UI
+        "st_monitor_region": "Custom Region",
         "hist_title": "Conversation History",
-        "hist_empty": "No saved conversations yet.",
-        "hist_search_ph": "Search conversations...",
-        "hist_delete_confirm": "Are you sure you want to delete this conversation?",
-        "hist_clear_confirm": "Are you sure you want to clear ALL conversation history?",
-        "hist_question_img": "Captured Question Screenshot:",
+        "hist_clear_confirm": "Are you sure you want to clear all chat history?",
         "hist_no_title": "Untitled Chat",
-        
-        # Chat UI
-        "chat_welcome_title": "Welcome to SolveX v1.3.0",
-        "chat_welcome_desc": "1. Enter your Gemini API key in <b>Settings</b>.<br>2. Click <b>Solve Homework (F2)</b> or <b>Solve Listening (F3)</b>.<br>3. SolveX will automatically hide so you can clearly see the problem.<br>4. Solutions and screenshots will appear here.",
-        "chat_input_ph": "Ask follow-up questions about the solution... (Ctrl+Enter to send)",
-        "chat_user_label": "You",
-        "chat_solvex_label": "SolveX",
-        "chat_thinking": "SolveX is reading the problem and thinking...",
-        "chat_listening_thinking": "SolveX is listening to audio and solving...",
-        "chat_user_captured": "Captured screen — solving...",
-        "chat_user_listened": "Recorded {} seconds of audio + question image — processing...",
-        
-        # User Guide
-        "guide_title": "SolveX User Guide v1.3.0",
+        "hist_search_ph": "Search past questions...",
+        "guide_title": "SolveX User Guide",
         "guide_step1_title": "1. Enter API Key",
-        "guide_step1_desc": "Go to <b>Settings</b>, paste your free API key from <i>Google AI Studio</i>, and click <b>Test API Key</b>.",
-        "guide_step2_title": "2. Solve Homework via Image (F2)",
-        "guide_step2_desc": "Open problem on screen, press <b>Solve Homework</b> or <code>F2</code>. The app window automatically hides so you can select the exact region.",
-        "guide_step3_title": "3. Solve Listening Exercises (F3)",
-        "guide_step3_desc": "Press <b>Solve Listening</b> or <code>F3</code> to start recording speaker audio. Press again to stop and submit.",
-        "guide_step4_title": "4. Menu Bar & Floating Sidebar 2026",
-        "guide_step4_desc": "Use the top Menu Bar or 2026 floating sidebar to quickly open settings, history, toggle themes, or check for GitHub updates.",
-        "guide_shortcuts": "Keyboard Shortcuts",
-        "guide_sc_f2": "F2: Capture & Solve normal exercise",
-        "guide_sc_f3": "F3: Start / Stop listening recording",
-        "guide_sc_ctrl_enter": "Ctrl + Enter: Send follow-up question",
-    }
+        "guide_step1_desc": "Go to Settings -> Paste your free Gemini API Key from Google AI Studio.",
+        "guide_step2_title": "2. Fast Problem Solving (F2)",
+        "guide_step2_desc": "Press F2 or click [Solve Problem]. SolveX hides automatically, captures the problem region, and displays full AI steps.",
+        "guide_step3_title": "3. Listening Test Solver (F3)",
+        "guide_step3_desc": "Press F3 to capture and start recording audio. Press F3 again to finish and receive solutions.",
+        "guide_step4_title": "4. Top Compact Toolbar",
+        "guide_step4_desc": "Enable Top Compact Bar for a clean floating overlay while studying online.",
+        "guide_shortcuts": "Handy Keyboard Shortcuts",
+        "guide_sc_f2": "• F2: Quick Screen Capture & Solve",
+        "guide_sc_f3": "• F3: Toggle Audio Recording Solver",
+        "guide_sc_ctrl_enter": "• Ctrl + Enter: Send message in input box",
+        "status_ready": "SolveX v1.5.1 is ready.",
+        "tip_capture": "Select custom region",
+        "tip_solve": "Solve screen problem (F2)",
+        "tip_listen": "Listening test solver (F3)",
+        "tip_history": "Open Chat History",
+        "tip_settings": "System Settings",
+        "tip_changelog": "View release notes",
+        "tip_tray": "Minimize to system tray",
+        "st_latest_ver": "Current version ({0}) is the latest on GitHub!",
+    },
 }
 
 
 class I18nManager(QObject):
     language_changed = pyqtSignal(str)
 
-    def __init__(self, current_lang="vi"):
+    def __init__(self, current_lang: str = "vi"):
         super().__init__()
-        self.lang = current_lang if current_lang in TRANSLATIONS else "vi"
+        self.lang = current_lang if current_lang in STRINGS else "vi"
 
     def set_language(self, lang_code: str):
-        if lang_code in TRANSLATIONS and lang_code != self.lang:
+        if lang_code in STRINGS and lang_code != self.lang:
             self.lang = lang_code
             self.language_changed.emit(self.lang)
 
     def t(self, key: str, *args) -> str:
-        text = TRANSLATIONS.get(self.lang, {}).get(key) or TRANSLATIONS["vi"].get(key, key)
-        if args and "{}" in text:
-            return text.format(*args)
+        text = STRINGS.get(self.lang, {}).get(key, STRINGS["vi"].get(key, key))
+        if args:
+            try:
+                return text.format(*args)
+            except Exception:
+                return text
         return text
 
 
-i18n = I18nManager("vi")
+i18n = I18nManager()
