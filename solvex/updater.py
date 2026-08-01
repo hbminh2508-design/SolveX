@@ -6,7 +6,9 @@ và tự động build file .exe bằng PyInstaller.
 import json
 import os
 import re
+import shutil
 import subprocess
+import sys
 import urllib.request
 from pathlib import Path
 
@@ -29,7 +31,7 @@ class CheckUpdateWorker(QThread):
 
     def run(self):
         remote_ver = None
-        changelog = "Có phiên bản mới v1.4.0 trên GitHub với giao diện Liquid Glass 3.0, bộ Master Icons v3.0 và thiết kế loại bỏ nút thừa!"
+        changelog = "Có phiên bản mới v1.5.0 trên GitHub với giao diện WinUI 3 chuẩn, đồng bộ cài đặt hoàn chỉnh và bộ icon nét mảnh thanh lịch!"
         download_url = f"https://github.com/{TARGET_GITHUB_REPO}"
 
         # 1. Tải raw file version.py từ GitHub main branch
@@ -111,21 +113,48 @@ class BuildExeWorker(QThread):
         super().__init__(parent)
         self.project_dir = project_dir
 
+    def _find_real_project_dir() -> str:
+        candidates = [
+            os.getcwd(),
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            r"c:\Users\hoang\Downloads\SolveX-main\SolveX-main",
+        ]
+        for path in candidates:
+            if os.path.exists(os.path.join(path, "solvex.spec")):
+                return path
+            if os.path.exists(os.path.join(path, "main.py")):
+                return path
+        return candidates[0]
+
     def run(self):
         try:
-            self.progress.emit("Bắt đầu tiến trình đóng gói .exe...")
-            pyinstaller_exe = os.path.join(self.project_dir, ".venv", "Scripts", "pyinstaller.exe")
-            spec_file = os.path.join(self.project_dir, "solvex.spec")
-
-            if not os.path.exists(pyinstaller_exe):
-                pyinstaller_exe = "pyinstaller"
-
-            cmd = [pyinstaller_exe, "--noconfirm", "--clean", spec_file]
-            self.progress.emit(f"Chạy lệnh: {' '.join(cmd)}")
+            real_dir = BuildExeWorker._find_real_project_dir()
+            self.progress.emit(f"Xác định thư mục dự án: {real_dir}")
             
+            spec_file = os.path.join(real_dir, "solvex.spec")
+            if not os.path.exists(spec_file):
+                self.failed.emit(f"Không tìm thấy file {spec_file} trong thư mục dự án!")
+                return
+
+            python_exe = os.path.join(real_dir, ".venv", "Scripts", "python.exe")
+            pyinstaller_exe = os.path.join(real_dir, ".venv", "Scripts", "pyinstaller.exe")
+
+            if os.path.exists(pyinstaller_exe):
+                cmd = [pyinstaller_exe, "--noconfirm", "--clean", spec_file]
+            elif os.path.exists(python_exe):
+                cmd = [python_exe, "-m", "PyInstaller", "--noconfirm", "--clean", spec_file]
+            else:
+                sys_pyinstaller = shutil.which("pyinstaller")
+                if sys_pyinstaller:
+                    cmd = [sys_pyinstaller, "--noconfirm", "--clean", spec_file]
+                else:
+                    cmd = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", spec_file]
+
+            self.progress.emit(f"Bắt đầu tiến trình đóng gói: {' '.join(cmd)}")
+
             proc = subprocess.Popen(
                 cmd,
-                cwd=self.project_dir,
+                cwd=real_dir,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -140,9 +169,11 @@ class BuildExeWorker(QThread):
 
             proc.wait()
             if proc.returncode == 0:
-                exe_path = os.path.join(self.project_dir, "dist", "SolveX.exe")
+                exe_path = os.path.join(real_dir, "dist", "SolveX.exe")
                 self.succeeded.emit(exe_path)
             else:
                 self.failed.emit(f"Build thất bại với mã lỗi {proc.returncode}")
+        except FileNotFoundError:
+            self.failed.emit("Không tìm thấy PyInstaller trong môi trường hệ thống! Vui lòng cài đặt qua `pip install pyinstaller`.")
         except Exception as exc:
             self.failed.emit(str(exc))

@@ -1,9 +1,20 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.4.0"
+APP_VERSION = "1.5.0"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.5.0",
+        "2026-08-01",
+        [
+            "Khắc phục triệt để lỗi không đồng bộ cài đặt (chủ đề giao diện, ngôn ngữ hiển thị) trên trang Cài Đặt Hệ Thống.",
+            "Tối giản giao diện WinUI 3 Fluent tiêu chuẩn, thiết kế thanh lịch, hiển thị tiêu đề chuẩn 'SolveX v1.5.0'.",
+            "Đưa bộ biểu tượng Vector Icons về thiết kế nét mảnh 1.5px phẳng WinUI 3 sang trọng, tinh tế.",
+            "Tối ưu hoá tiến trình giải bài và phản hồi câu hỏi AI Gemini nhanh hơn, mượt hơn.",
+            "Phát hành phiên bản 1.5.0 hoàn chỉnh và hỗ trợ cập nhật tự động.",
+        ],
+    ),
     (
         "1.4.0",
         "2026-08-01",

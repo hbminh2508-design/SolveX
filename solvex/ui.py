@@ -1,5 +1,5 @@
-"""Giao diện SolveX v1.4.0 — Liquid Glass 3.0 & WinUI 3 Liquid Acrylic,
-Master Vector Icons v3.0, Đa Ngôn Ngữ, GitHub Auto Update (hbminh2508-design/SolveX).
+"""Giao diện SolveX v1.5.0 — WinUI 3 Fluent Design, Đa Ngôn Ngữ,
+Sửa lỗi đồng bộ Cài đặt 100%, GitHub Auto Update (hbminh2508-design/SolveX).
 """
 
 import html as html_lib
@@ -90,7 +90,7 @@ def _draw_fallback_icon() -> QIcon:
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(QColor(style.AMBER))
-    painter.drawRoundedRect(2, 2, 60, 60, 18, 18)
+    painter.drawRoundedRect(2, 2, 60, 60, 14, 14)
     painter.setPen(QColor("#ffffff"))
     font = painter.font()
     font.setBold(True)
@@ -192,7 +192,7 @@ class CaptionButton(QPushButton):
 
 
 # --------------------------------------------------------------------------
-# Compact Top Bar Window (Liquid Glass 3.0 & Master Icons v3.0)
+# Compact Top Bar Window
 # --------------------------------------------------------------------------
 class CompactWindow(QWidget):
     def __init__(self, main_window):
@@ -329,12 +329,12 @@ class CompactWindow(QWidget):
         p = style.get_palette(self.main.config.get("theme", "dark"))
         painter.setPen(QPen(QColor(p["BORDER"]), 1))
         painter.setBrush(QColor(p["PANEL_SOLID"]))
-        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 14, 14)
+        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 10, 10)
         painter.end()
 
     def showEvent(self, event):
         super().showEvent(event)
-        fluent.apply_mica(self, dark_mode=(self.main.config.get("theme", "dark") == "dark"), glass_mode=True)
+        fluent.apply_mica(self, dark_mode=(self.main.config.get("theme", "dark") == "dark"), glass_mode=False)
 
 
 # --------------------------------------------------------------------------
@@ -402,7 +402,7 @@ class BusyIndicator(QWidget):
         p = style.get_palette(self.theme)
         painter.setPen(QPen(QColor(p["BORDER"]), 1))
         painter.setBrush(QColor(p["PANEL_SOLID"]))
-        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 14, 14)
+        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 10, 10)
         painter.end()
 
     def show_near(self, anchor: QWidget):
@@ -424,7 +424,7 @@ class BusyIndicator(QWidget):
 
 
 # --------------------------------------------------------------------------
-# Cửa sổ chính MainWindow (Liquid Glass 3.0 UI/UX)
+# Cửa sổ chính MainWindow (WinUI 3 Fluent Design v1.5.0)
 # --------------------------------------------------------------------------
 class MainWindow(QMainWindow):
     SYSTEM_INSTRUCTION = (
@@ -457,8 +457,8 @@ class MainWindow(QMainWindow):
 
         self._build_menu_bar()
         self._build_ui()
-        self.apply_theme(self.config.get("theme", "dark"))
         self._load_config_into_ui()
+        self.apply_theme(self.config.get("theme", "dark"))
 
         self.record_timer = QTimer(self)
         self.record_timer.timeout.connect(self._tick_record)
@@ -475,7 +475,7 @@ class MainWindow(QMainWindow):
     def showEvent(self, event):
         super().showEvent(event)
         is_dark = self.config.get("theme", "dark") == "dark"
-        fluent.apply_mica(self, dark_mode=is_dark, glass_mode=True)
+        fluent.apply_mica(self, dark_mode=is_dark, glass_mode=False)
 
     # ------------------ Native Menu Bar ------------------
     def _build_menu_bar(self):
@@ -554,6 +554,7 @@ class MainWindow(QMainWindow):
         i18n.set_language(lang_code)
         self.config.set("language", lang_code)
         self.config.save()
+        self._load_config_into_ui()
 
     def apply_theme(self, theme_name: str):
         self.config.set("theme", theme_name)
@@ -561,7 +562,8 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(style.get_stylesheet(theme_name))
         if hasattr(self, "toolbar") and self.toolbar:
             self.toolbar.setStyleSheet(style.get_compact_stylesheet(theme_name))
-        fluent.apply_mica(self, dark_mode=(theme_name == "dark"), glass_mode=True)
+        fluent.apply_mica(self, dark_mode=(theme_name == "dark"), glass_mode=False)
+        self._load_config_into_ui()
         self._render_chat()
 
     # ------------------ Tray & Display Modes ------------------
@@ -610,7 +612,9 @@ class MainWindow(QMainWindow):
         idx = tab_map.get(tab_name, 0)
         self.nav_group.buttons()[idx].setChecked(True)
         self.stack.setCurrentIndex(idx)
-        if tab_name == "history":
+        if tab_name == "settings":
+            self._load_config_into_ui()
+        elif tab_name == "history":
             self._refresh_history_list()
 
     def show_release_notes(self):
@@ -620,7 +624,7 @@ class MainWindow(QMainWindow):
         self._shutdown()
         QApplication.instance().quit()
 
-    # ------------------ Xây dựng Liquid Glass UI ------------------
+    # ------------------ Xây dựng WinUI 3 UI ------------------
     def _build_ui(self):
         root = QWidget()
         self.setCentralWidget(root)
@@ -628,17 +632,17 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Floating Sidebar Liquid Glass 3.0
+        # Floating Sidebar WinUI 3
         sidebar = QFrame()
         sidebar.setObjectName("NavSidebar")
-        sidebar.setFixedWidth(215)
+        sidebar.setFixedWidth(210)
         s_box = QVBoxLayout(sidebar)
-        s_box.setContentsMargins(12, 18, 12, 18)
-        s_box.setSpacing(8)
+        s_box.setContentsMargins(10, 16, 10, 16)
+        s_box.setSpacing(6)
 
         brand_box = QHBoxLayout()
         logo = QLabel()
-        logo.setPixmap(build_app_icon().pixmap(26, 26))
+        logo.setPixmap(build_app_icon().pixmap(24, 24))
         brand_box.addWidget(logo)
         title_box = QVBoxLayout()
         brand_lbl = QLabel("SolveX")
@@ -674,15 +678,15 @@ class MainWindow(QMainWindow):
         r_layout.setContentsMargins(0, 0, 0, 0)
         r_layout.setSpacing(0)
 
-        # Header Bar — ĐÃ XOÁ HOÀN TOÀN CÁC NÚT BẤM TRÙNG LẶP THEO ẢNH YÊU CẦU
+        # Header Bar Chuẩn WinUI 3: "SolveX v1.5.0"
         header = QFrame()
         header.setObjectName("HeaderBar")
-        header.setFixedHeight(42)
+        header.setFixedHeight(40)
         h_layout = QHBoxLayout(header)
-        h_layout.setContentsMargins(18, 6, 18, 6)
+        h_layout.setContentsMargins(16, 4, 16, 4)
         h_layout.setSpacing(10)
 
-        page_title = QLabel("SolveX Liquid Glass v" + APP_VERSION)
+        page_title = QLabel("SolveX v" + APP_VERSION)
         page_title.setStyleSheet("font-weight:600; font-size:13px; color:" + style.MUTED + ";")
         h_layout.addWidget(page_title)
         h_layout.addStretch(1)
@@ -720,14 +724,14 @@ class MainWindow(QMainWindow):
     def _build_chat_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(10)
 
         top_card = QFrame()
         top_card.setObjectName("Card")
         t_row = QHBoxLayout(top_card)
-        t_row.setContentsMargins(14, 12, 14, 12)
-        t_row.setSpacing(12)
+        t_row.setContentsMargins(12, 10, 12, 10)
+        t_row.setSpacing(10)
 
         self.btn_solve_main = QPushButton(i18n.t("btn_solve_normal") + " (F2)")
         self.btn_solve_main.setObjectName("Solve")
@@ -791,8 +795,8 @@ class MainWindow(QMainWindow):
     def _build_history_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(10)
 
         header_row = QHBoxLayout()
         title = QLabel(i18n.t("hist_title"))
@@ -819,7 +823,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(splitter, 1)
         return page
 
-    # Tab 3: Settings Page
+    # Tab 3: Settings Page — SỬA ĐỒNG BỘ 100% RADIO BUTTONS
     def _build_settings_page(self) -> QWidget:
         page = QWidget()
         scroll = QScrollArea()
@@ -837,8 +841,14 @@ class MainWindow(QMainWindow):
 
         g_layout.addWidget(QLabel(i18n.t("st_theme")))
         theme_row = QHBoxLayout()
+        self.theme_group = QButtonGroup(self)
+
         self.theme_dark_rad = QRadioButton(i18n.t("st_theme_dark"))
         self.theme_light_rad = QRadioButton(i18n.t("st_theme_light"))
+
+        self.theme_group.addButton(self.theme_dark_rad, 0)
+        self.theme_group.addButton(self.theme_light_rad, 1)
+
         theme_row.addWidget(self.theme_dark_rad)
         theme_row.addWidget(self.theme_light_rad)
         theme_row.addStretch(1)
@@ -847,8 +857,14 @@ class MainWindow(QMainWindow):
 
         g_layout.addWidget(QLabel(i18n.t("st_language")))
         lang_row = QHBoxLayout()
+        self.lang_group = QButtonGroup(self)
+
         self.lang_vi = QRadioButton("Tiếng Việt")
         self.lang_en = QRadioButton("English")
+
+        self.lang_group.addButton(self.lang_vi, 0)
+        self.lang_group.addButton(self.lang_en, 1)
+
         lang_row.addWidget(self.lang_vi)
         lang_row.addWidget(self.lang_en)
         lang_row.addStretch(1)
@@ -1021,7 +1037,7 @@ class MainWindow(QMainWindow):
     def _build_changelog_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setContentsMargins(14, 14, 14, 14)
         browser = QTextBrowser()
         browser.setObjectName("Chat")
         browser.setOpenExternalLinks(True)
@@ -1034,7 +1050,7 @@ class MainWindow(QMainWindow):
         lbl.setObjectName("SectionLabel")
         return lbl
 
-    # ------------------ Quản lý Config UI ------------------
+    # ------------------ Quản lý Config UI (ĐÃ SỬA CHÍNH XÁC ĐỒNG BỘ) ------------------
     def _populate_monitors(self):
         self.monitor_combo.clear()
         try:
@@ -1053,25 +1069,28 @@ class MainWindow(QMainWindow):
         self.monitor_combo.addItem(i18n.t("st_monitor_region"), -1)
 
     def _load_config_into_ui(self):
-        self.key_input.setText(self.config.get("api_key"))
-        self.model_input.setText(self.config.get("model"))
-        self.hide_check.setChecked(bool(self.config.get("hide_window_on_capture")))
-        self.loopback_check.setChecked(bool(self.config.get("use_loopback")))
-        self.prompt_normal_edit.setPlainText(self.config.get("prompt_normal"))
-        self.prompt_listen_edit.setPlainText(self.config.get("prompt_listening"))
+        self.key_input.setText(self.config.get("api_key", ""))
+        self.model_input.setText(self.config.get("model", ""))
+        self.hide_check.setChecked(bool(self.config.get("hide_window_on_capture", True)))
+        self.loopback_check.setChecked(bool(self.config.get("use_loopback", False)))
+        self.prompt_normal_edit.setPlainText(self.config.get("prompt_normal", ""))
+        self.prompt_listen_edit.setPlainText(self.config.get("prompt_listening", ""))
 
+        # 1. Đồng bộ Theme Radio Button 100%
         theme = self.config.get("theme", "dark")
         if theme == "light":
             self.theme_light_rad.setChecked(True)
         else:
             self.theme_dark_rad.setChecked(True)
 
+        # 2. Đồng bộ Language Radio Button 100%
         lang = self.config.get("language", "vi")
         if lang == "en":
             self.lang_en.setChecked(True)
         else:
             self.lang_vi.setChecked(True)
 
+        # 3. Đồng bộ Startup Mode
         mode = self.config.get("startup_mode", "compact")
         idx = self.start_combo.findData(mode)
         if idx >= 0:
