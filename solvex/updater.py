@@ -5,6 +5,7 @@ và tự động build file .exe bằng PyInstaller.
 
 import json
 import os
+import re
 import subprocess
 import urllib.request
 from pathlib import Path
@@ -14,40 +15,66 @@ from PyQt6.QtCore import QThread, pyqtSignal
 from .version import APP_VERSION
 
 TARGET_GITHUB_REPO = "hbminh2508-design/SolveX"
+RAW_VERSION_URL = f"https://raw.githubusercontent.com/{TARGET_GITHUB_REPO}/main/solvex/version.py"
 GITHUB_API_RELEASE = f"https://api.github.com/repos/{TARGET_GITHUB_REPO}/releases/latest"
 GITHUB_API_COMMITS = f"https://api.github.com/repos/{TARGET_GITHUB_REPO}/commits/main"
 
 
 class CheckUpdateWorker(QThread):
-    """Worker kiểm tra phiên bản mới trên GitHub hbminh2508-design/SolveX."""
+    """Worker kiểm tra phiên bản mới trực tiếp từ GitHub hbminh2508-design/SolveX."""
 
     up_to_date = pyqtSignal(str)
     update_available = pyqtSignal(str, str, str)  # (version, changelog, url)
     failed = pyqtSignal(str)
 
     def run(self):
-        # 1. Thử kiểm tra qua Release API
+        remote_ver = None
+        changelog = "Có phiên bản mới v1.3.1 trên GitHub với giao diện Kính Mờ (Glassmorphism) và bộ Vector Icon v2.0 sang trọng!"
+        download_url = f"https://github.com/{TARGET_GITHUB_REPO}"
+
+        # 1. Tải raw file version.py từ GitHub main branch
         try:
             req = urllib.request.Request(
-                GITHUB_API_RELEASE,
+                RAW_VERSION_URL,
                 headers={"User-Agent": "SolveX-App-Updater"},
             )
             with urllib.request.urlopen(req, timeout=10) as resp:
                 if resp.status == 200:
-                    data = json.loads(resp.read().decode("utf-8"))
-                    remote_ver = data.get("tag_name", "").lstrip("v")
-                    changelog = data.get("body", "Có phiên bản mới trên GitHub!")
-                    download_url = data.get("html_url", f"https://github.com/{TARGET_GITHUB_REPO}")
-                    if self._is_newer(remote_ver, APP_VERSION):
-                        self.update_available.emit(remote_ver, changelog, download_url)
-                        return
-                    else:
-                        self.up_to_date.emit(APP_VERSION)
-                        return
+                    text = resp.read().decode("utf-8")
+                    match = re.search(r'APP_VERSION\s*=\s*["\']([^"\']+)["\']', text)
+                    if match:
+                        remote_ver = match.group(1)
         except Exception:
             pass
 
-        # 2. Thử kiểm tra qua Commits API nếu chưa có Releases
+        # 2. Thử kiểm tra qua Releases API nếu có
+        if not remote_ver:
+            try:
+                req = urllib.request.Request(
+                    GITHUB_API_RELEASE,
+                    headers={"User-Agent": "SolveX-App-Updater"},
+                )
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    if resp.status == 200:
+                        data = json.loads(resp.read().decode("utf-8"))
+                        remote_ver = data.get("tag_name", "").lstrip("v")
+                        if data.get("body"):
+                            changelog = data.get("body")
+                        if data.get("html_url"):
+                            download_url = data.get("html_url")
+            except Exception:
+                pass
+
+        # 3. So sánh phiên bản remote và local
+        if remote_ver:
+            if self._is_newer(remote_ver, APP_VERSION):
+                self.update_available.emit(remote_ver, changelog, download_url)
+                return
+            else:
+                self.up_to_date.emit(APP_VERSION)
+                return
+
+        # 4. Fallback check qua Commits API
         try:
             req = urllib.request.Request(
                 GITHUB_API_COMMITS,
@@ -57,14 +84,11 @@ class CheckUpdateWorker(QThread):
                 if resp.status == 200:
                     data = json.loads(resp.read().decode("utf-8"))
                     commit_sha = data.get("sha", "")[:7]
-                    commit_msg = data.get("commit", {}).get("message", "")
-                    # Nếu kiểm tra thành công
                     self.up_to_date.emit(f"{APP_VERSION} (Commit: {commit_sha})")
                     return
-        except Exception as exc:
+        except Exception:
             pass
 
-        # Báo đã là phiên bản mới nhất nếu mạng lỗi hoặc repo chưa phát hành tag mới
         self.up_to_date.emit(APP_VERSION)
 
     def _is_newer(self, remote: str, current: str) -> bool:
