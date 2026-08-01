@@ -29,7 +29,7 @@ class CheckUpdateWorker(QThread):
 
     def run(self):
         remote_ver = None
-        changelog = "Có phiên bản mới v1.3.1 trên GitHub với giao diện Kính Mờ (Glassmorphism) và bộ Vector Icon v2.0 sang trọng!"
+        changelog = "Có phiên bản mới v1.4.0 trên GitHub với giao diện Liquid Glass 3.0, bộ Master Icons v3.0 và thiết kế loại bỏ nút thừa!"
         download_url = f"https://github.com/{TARGET_GITHUB_REPO}"
 
         # 1. Tải raw file version.py từ GitHub main branch

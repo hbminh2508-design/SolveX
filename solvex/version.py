@@ -1,9 +1,20 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.3.1"
+APP_VERSION = "1.4.0"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.4.0",
+        "2026-08-01",
+        [
+            "Đập đi xây lại toàn bộ UI/UX theo phong cách Liquid Glass 3.0 (WinUI 3 Liquid Acrylic) siêu sang trọng.",
+            "Tái thiết kế 100% bộ Master Icons v3.0 vẽ nét đồ hoạ kỹ thuật cao cấp, tỉ lệ hình học xa xỉ chuẩn thiết kế 2026.",
+            "Loại bỏ nhóm nút bấm trùng lặp trên thanh HeaderBar (Dark/Light, Ngôn ngữ, Top Bar nổi, Cập nhật GitHub) giúp giao diện gọn gàng, tinh tế hơn.",
+            "Nâng cấp độ bo góc 18px mềm mại trên toàn bộ thẻ Card, Sidebar nổi và khung trò chuyện.",
+            "Cải thiện hiệu năng xử lý đồ hoạ QSS và hỗ trợ kiểm tra cập nhật online lên v1.4.0.",
+        ],
+    ),
     (
         "1.3.1",
         "2026-08-01",

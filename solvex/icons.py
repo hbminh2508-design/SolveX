@@ -1,5 +1,5 @@
-"""Bộ vẽ Vector Icon v2.0 Sang Trọng (Luxury Minimalist 2026) cho SolveX.
-Vẽ bằng QPainter và QPainterPath với đường nét 1.75px tinh xảo, hình học chuẩn mực — Không dùng emoji.
+"""Bộ vẽ Vector Icon v3.0 Masterwork (Liquid Glass & WinUI 3 Modern Luxury) cho SolveX.
+Vẽ bằng QPainter và QPainterPath với đường nét hình học 1.75px tỉ mỉ, tỉ lệ hoàn hảo — Không dùng emoji.
 """
 
 from PyQt6.QtCore import QPointF, QRectF, Qt
@@ -9,7 +9,7 @@ from . import style
 
 
 class IconFactory:
-    """Tạo QIcon dạng vector v2.0 sang trọng với đường nét tinh xảo."""
+    """Tạo QIcon dạng Master Vector v3.0 sang trọng với thiết kế tinh xảo cao cấp."""
 
     @staticmethod
     def draw_icon(name: str, color_hex: str = style.TEXT, size: int = 24) -> QIcon:
@@ -25,98 +25,117 @@ class IconFactory:
         painter.setBrush(Qt.BrushStyle.NoBrush)
 
         s = float(size)
-        pad = s * 0.15
+        pad = s * 0.14
         rect = QRectF(pad, pad, s - 2 * pad, s - 2 * pad)
 
         if name == "camera":
-            # Icon máy ảnh sang trọng
+            # Icon máy ảnh chuyên nghiệp DSLR / Mirrorless masterwork
+            x, y, w, h = rect.x(), rect.y() + rect.height() * 0.18, rect.width(), rect.height() * 0.74
             path = QPainterPath()
-            rw, rh = rect.width(), rect.height() * 0.72
-            rx, ry = rect.x(), rect.y() + rect.height() * 0.22
-            path.addRoundedRect(QRectF(rx, ry, rw, rh), 4, 4)
-            # Ống kính kép
-            cx, cy = rect.center().x(), ry + rh / 2
-            path.addEllipse(QPointF(cx, cy), rw * 0.22, rw * 0.22)
-            path.addEllipse(QPointF(cx, cy), rw * 0.08, rw * 0.08)
-            # Nút shutter mỏng
-            path.moveTo(rx + rw * 0.28, ry)
-            path.lineTo(rx + rw * 0.38, rect.y() + 1)
-            path.lineTo(rx + rw * 0.62, rect.y() + 1)
-            path.lineTo(rx + rw * 0.72, ry)
+            path.addRoundedRect(QRectF(x, y, w, h), 6, 6)
+            
+            # Thang kính ngắm & Nút chụp đỉnh
+            path.moveTo(x + w * 0.28, y)
+            path.lineTo(x + w * 0.36, rect.y() + 2)
+            path.lineTo(x + w * 0.64, rect.y() + 2)
+            path.lineTo(x + w * 0.72, y)
+            
+            # Vòng ống kính kép xa xỉ
+            cx, cy = rect.center().x(), y + h * 0.5
+            path.addEllipse(QPointF(cx, cy), w * 0.25, w * 0.25)
+            path.addEllipse(QPointF(cx, cy), w * 0.12, w * 0.12)
+            
+            # Đèn cảm biến / Flash phụ
+            path.addEllipse(QPointF(x + w * 0.82, y + h * 0.25), 1.2, 1.2)
             painter.drawPath(path)
 
         elif name in ("solve", "sparkle"):
-            # Icon ngôi sao AI 4 cánh hình học (Geometric Diamond Sparkle)
-            path = QPainterPath()
+            # Icon Ngôi sao AI Diamond Sparkle Masterwork 4 cánh & sao vệ tinh
             cx, cy = s * 0.5, s * 0.5
-            r1, r2 = s * 0.4, s * 0.11
+            r_out, r_in = s * 0.42, s * 0.12
+            path = QPainterPath()
             import math
             for i in range(8):
-                r = r1 if i % 2 == 0 else r2
+                r = r_out if i % 2 == 0 else r_in
                 angle = i * math.pi / 4 - math.pi / 2
-                x = cx + r * math.cos(angle)
-                y = cy + r * math.sin(angle)
+                px = cx + r * math.cos(angle)
+                py = cy + r * math.sin(angle)
                 if i == 0:
-                    path.moveTo(x, y)
+                    path.moveTo(px, py)
                 else:
-                    path.lineTo(x, y)
+                    path.lineTo(px, py)
             path.closeSubpath()
+            
+            # Nhân nhụy tâm sáng
+            path.addEllipse(QPointF(cx, cy), 1.8, 1.8)
             painter.drawPath(path)
-            # Chấm sáng nhỏ phụ
+
+            # Sao vệ tinh phát quang
             painter.setBrush(color)
-            painter.drawEllipse(QPointF(cx + r1 * 0.6, cy - r1 * 0.6), 1.2, 1.2)
-            painter.drawEllipse(QPointF(cx - r1 * 0.6, cy + r1 * 0.6), 1.2, 1.2)
+            painter.drawEllipse(QPointF(cx + r_out * 0.58, cy - r_out * 0.58), 1.4, 1.4)
+            painter.drawEllipse(QPointF(cx - r_out * 0.58, cy + r_out * 0.58), 1.4, 1.4)
 
         elif name in ("headphones", "listen"):
-            # Icon tai nghe tối giản
+            # Icon Tai nghe Studio Monitor cao cấp
+            cx, cy = s * 0.5, s * 0.5
+            r = s * 0.35
             path = QPainterPath()
-            cx, cy = s * 0.5, s * 0.52
-            r = s * 0.34
-            path.arcMoveTo(QRectF(cx - r, cy - r, 2 * r, 2 * r), 0)
-            path.arcTo(QRectF(cx - r, cy - r, 2 * r, 2 * r), 0, 180)
+            path.arcMoveTo(QRectF(cx - r, cy - r, 2 * r, 2 * r), -10)
+            path.arcTo(QRectF(cx - r, cy - r, 2 * r, 2 * r), -10, 200)
             painter.drawPath(path)
-            # Ốp tai bo góc 4px
+            
+            # Ốp tai đệm da bo góc mượt
             painter.setBrush(color)
-            painter.drawRoundedRect(QRectF(cx - r - 2, cy - 2, 4.5, r * 0.8), 2, 2)
-            painter.drawRoundedRect(QRectF(cx + r - 2.5, cy - 2, 4.5, r * 0.8), 2, 2)
+            painter.drawRoundedRect(QRectF(cx - r - 3, cy - 2, 5, r * 0.85), 2.5, 2.5)
+            painter.drawRoundedRect(QRectF(cx + r - 2, cy - 2, 5, r * 0.85), 2.5, 2.5)
+            
+            # Khớp nối kim loại
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawLine(QPointF(cx - r - 0.5, cy - 2), QPointF(cx - r - 0.5, cy - 6))
+            painter.drawLine(QPointF(cx + r + 0.5, cy - 2), QPointF(cx + r + 0.5, cy - 6))
 
         elif name == "history":
-            # Icon đồng hồ tinh xảo
-            path = QPainterPath()
-            path.addEllipse(rect)
+            # Icon Đồng hồ Chronometer tinh xảo
             cx, cy = rect.center().x(), rect.center().y()
-            path.moveTo(cx, cy - rect.height() * 0.32)
-            path.lineTo(cx, cy)
-            path.lineTo(cx + rect.width() * 0.24, cy)
+            r = rect.width() * 0.44
+            path = QPainterPath()
+            path.addEllipse(QPointF(cx, cy), r, r)
+            
+            # Kim chỉ giờ 10:10 sang trọng
+            path.moveTo(cx, cy)
+            path.lineTo(cx - r * 0.35, cy - r * 0.35)
+            path.moveTo(cx, cy)
+            path.lineTo(cx + r * 0.45, cy - r * 0.2)
+            
             painter.drawPath(path)
             painter.setBrush(color)
-            painter.drawEllipse(QPointF(cx, cy), 1.5, 1.5)
+            painter.drawEllipse(QPointF(cx, cy), 1.8, 1.8)
 
         elif name == "settings":
-            # Icon bánh răng kỹ thuật 8 răng độ nét cao
+            # Icon Bánh răng kỹ thuật Masterwork 8 răng độ nét cao
             cx, cy = rect.center().x(), rect.center().y()
-            r_out, r_in = rect.width() * 0.42, rect.width() * 0.26
+            r_out, r_in = rect.width() * 0.44, rect.width() * 0.28
             path = QPainterPath()
             import math
             n_teeth = 8
             for i in range(n_teeth * 2):
                 angle = i * math.pi / n_teeth
                 r = r_out if i % 2 == 0 else r_in
-                x = cx + r * math.cos(angle)
-                y = cy + r * math.sin(angle)
+                px = cx + r * math.cos(angle)
+                py = cy + r * math.sin(angle)
                 if i == 0:
-                    path.moveTo(x, y)
+                    path.moveTo(px, py)
                 else:
-                    path.lineTo(x, y)
+                    path.lineTo(px, py)
             path.closeSubpath()
+            path.addEllipse(QPointF(cx, cy), r_in * 0.5, r_in * 0.5)
             painter.drawPath(path)
-            painter.drawEllipse(QPointF(cx, cy), r_in * 0.48, r_in * 0.48)
 
         elif name == "guide":
-            # Icon cuốn sách tối giản mở phẳng
-            path = QPainterPath()
+            # Icon Cuốn sách phẳng Masterwork mở đôi
             w, h = rect.width(), rect.height()
             x, y = rect.x(), rect.y()
+            path = QPainterPath()
             path.moveTo(x, y + h * 0.15)
             path.lineTo(x + w * 0.5, y + h * 0.28)
             path.lineTo(x + w, y + h * 0.15)
@@ -124,66 +143,70 @@ class IconFactory:
             path.lineTo(x + w * 0.5, y + h * 0.95)
             path.lineTo(x, y + h * 0.82)
             path.closeSubpath()
+            
+            # Gáy sách & Dải trang trí
             path.moveTo(x + w * 0.5, y + h * 0.28)
             path.lineTo(x + w * 0.5, y + h * 0.95)
             painter.drawPath(path)
 
         elif name in ("changelog", "spark"):
-            # Icon tín hiệu / loa phát thông báo
-            x, y, w, h = rect.x(), rect.y(), rect.width(), rect.height()
-            cy = rect.center().y()
+            # Icon Tên lửa / Huy hiệu thông báo phát sáng
+            cx, cy = rect.center().x(), rect.center().y()
+            w, h = rect.width(), rect.height()
             path = QPainterPath()
-            path.moveTo(x, cy - 3)
-            path.lineTo(x + w * 0.35, cy - 3)
-            path.lineTo(x + w * 0.72, y + 2)
-            path.lineTo(x + w * 0.72, y + h - 2)
-            path.lineTo(x + w * 0.35, cy + 3)
-            path.lineTo(x, cy + 3)
-            path.closeSubpath()
+            path.moveTo(cx, rect.y())
+            path.quadTo(QPointF(rect.right(), cy), QPointF(cx, rect.bottom()))
+            path.quadTo(QPointF(rect.x(), cy), QPointF(cx, rect.y()))
             painter.drawPath(path)
-            # Sóng âm thanh
-            painter.drawArc(QRectF(x + w * 0.78, cy - 6, 10, 12), -60 * 16, 120 * 16)
+            painter.setBrush(color)
+            painter.drawEllipse(QPointF(cx, cy), w * 0.15, w * 0.15)
 
         elif name == "globe":
-            # Icon quả địa cầu sang trọng
+            # Icon Quả địa cầu 3D Wireframe Masterwork
             cx, cy = rect.center().x(), rect.center().y()
             r = rect.width() * 0.44
             painter.drawEllipse(QPointF(cx, cy), r, r)
             painter.drawLine(QPointF(cx - r, cy), QPointF(cx + r, cy))
             painter.drawEllipse(QPointF(cx, cy), r * 0.45, r)
+            painter.drawEllipse(QPointF(cx, cy), r, r * 0.45)
 
         elif name == "moon":
-            # Icon mặt trăng lưỡi liềm kèm sao
+            # Icon Mặt trăng lưỡi liềm xa xỉ kèm 2 sao sáng
             path = QPainterPath()
             cx, cy = rect.center().x(), rect.center().y()
-            r = rect.width() * 0.42
-            path.arcMoveTo(QRectF(cx - r, cy - r, 2 * r, 2 * r), 40)
-            path.arcTo(QRectF(cx - r, cy - r, 2 * r, 2 * r), 40, 270)
-            path.quadTo(QPointF(cx + r * 0.25, cy), QPointF(cx + r * 0.3, cy - r * 0.85))
+            r = rect.width() * 0.44
+            path.arcMoveTo(QRectF(cx - r, cy - r, 2 * r, 2 * r), 45)
+            path.arcTo(QRectF(cx - r, cy - r, 2 * r, 2 * r), 45, 260)
+            path.quadTo(QPointF(cx + r * 0.2, cy), QPointF(cx + r * 0.32, cy - r * 0.85))
             painter.drawPath(path)
+            
+            painter.setBrush(color)
+            painter.drawEllipse(QPointF(cx + r * 0.45, cy - r * 0.35), 1.2, 1.2)
+            painter.drawEllipse(QPointF(cx + r * 0.2, cy + r * 0.5), 1.2, 1.2)
 
         elif name == "sun":
-            # Icon mặt trời 8 tia
+            # Icon Mặt trời Vương miện 8 tia tapered
             cx, cy = rect.center().x(), rect.center().y()
-            r = rect.width() * 0.22
+            r = rect.width() * 0.24
             painter.drawEllipse(QPointF(cx, cy), r, r)
             import math
             for i in range(8):
                 angle = i * math.pi / 4
                 x1 = cx + (r + 3) * math.cos(angle)
                 y1 = cy + (r + 3) * math.sin(angle)
-                x2 = cx + (r + 7) * math.cos(angle)
-                y2 = cy + (r + 7) * math.sin(angle)
+                x2 = cx + (r + 8) * math.cos(angle)
+                y2 = cy + (r + 8) * math.sin(angle)
                 painter.drawLine(QPointF(x1, y1), QPointF(x2, y2))
 
         elif name in ("update", "sync"):
-            # Icon cung xoay cập nhật
+            # Icon Vòng lặp đồng bộ Masterwork
             cx, cy = rect.center().x(), rect.center().y()
             r = rect.width() * 0.38
             path = QPainterPath()
-            path.arcMoveTo(QRectF(cx - r, cy - r, 2 * r, 2 * r), 40)
-            path.arcTo(QRectF(cx - r, cy - r, 2 * r, 2 * r), 40, 270)
+            path.arcMoveTo(QRectF(cx - r, cy - r, 2 * r, 2 * r), 35)
+            path.arcTo(QRectF(cx - r, cy - r, 2 * r, 2 * r), 35, 280)
             painter.drawPath(path)
+            
             import math
             ax = cx + r * math.cos(math.pi / 4)
             ay = cy - r * math.sin(math.pi / 4)
@@ -194,19 +217,25 @@ class IconFactory:
             painter.drawPath(path_arrow)
 
         elif name == "trash":
-            # Icon thùng rác mảnh
+            # Icon Thùng rác masterwork mảnh
             x, y, w, h = rect.x(), rect.y(), rect.width(), rect.height()
             path = QPainterPath()
             path.moveTo(x, y + h * 0.22)
             path.lineTo(x + w, y + h * 0.22)
-            path.moveTo(x + w * 0.2, y + h * 0.22)
-            path.lineTo(x + w * 0.25, y + h)
-            path.lineTo(x + w * 0.75, y + h)
-            path.lineTo(x + w * 0.8, y + h * 0.22)
+            path.moveTo(x + w * 0.22, y + h * 0.22)
+            path.lineTo(x + w * 0.26, y + h)
+            path.lineTo(x + w * 0.74, y + h)
+            path.lineTo(x + w * 0.78, y + h * 0.22)
             path.moveTo(x + w * 0.35, y + h * 0.22)
             path.lineTo(x + w * 0.35, y + 2)
             path.lineTo(x + w * 0.65, y + 2)
             path.lineTo(x + w * 0.65, y + h * 0.22)
+            
+            # Gân hủy rác dọc
+            path.moveTo(x + w * 0.42, y + h * 0.38)
+            path.lineTo(x + w * 0.42, y + h * 0.82)
+            path.moveTo(x + w * 0.58, y + h * 0.38)
+            path.lineTo(x + w * 0.58, y + h * 0.82)
             painter.drawPath(path)
 
         elif name == "plus":
@@ -216,15 +245,14 @@ class IconFactory:
             painter.drawLine(QPointF(cx, cy - r), QPointF(cx, cy + r))
 
         elif name == "key":
-            # Icon chìa khoá tinh tế
             x, y, w, h = rect.x(), rect.y(), rect.width(), rect.height()
             path = QPainterPath()
-            path.addEllipse(QPointF(x + w * 0.32, y + h * 0.32), w * 0.25, w * 0.25)
-            path.moveTo(x + w * 0.5, y + h * 0.5)
+            path.addEllipse(QPointF(x + w * 0.32, y + h * 0.32), w * 0.24, w * 0.24)
+            path.moveTo(x + w * 0.48, y + h * 0.48)
             path.lineTo(x + w * 0.88, y + h * 0.88)
-            path.lineTo(x + w * 0.88, y + h * 0.75)
-            path.moveTo(x + w * 0.75, y + h * 0.75)
-            path.lineTo(x + w * 0.75, y + h * 0.65)
+            path.lineTo(x + w * 0.88, y + h * 0.74)
+            path.moveTo(x + w * 0.74, y + h * 0.74)
+            path.lineTo(x + w * 0.74, y + h * 0.62)
             painter.drawPath(path)
 
         elif name == "tray":
@@ -234,10 +262,10 @@ class IconFactory:
             path.lineTo(x, y + h)
             path.lineTo(x + w, y + h)
             path.lineTo(x + w, y + h * 0.35)
-            path.moveTo(x + w * 0.2, y + h * 0.35)
-            path.lineTo(x + w * 0.35, y + h * 0.62)
-            path.lineTo(x + w * 0.65, y + h * 0.62)
-            path.lineTo(x + w * 0.8, y + h * 0.35)
+            path.moveTo(x + w * 0.18, y + h * 0.35)
+            path.lineTo(x + w * 0.32, y + h * 0.62)
+            path.lineTo(x + w * 0.68, y + h * 0.62)
+            path.lineTo(x + w * 0.82, y + h * 0.35)
             painter.drawPath(path)
 
         elif name == "minimize":

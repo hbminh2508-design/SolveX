@@ -1,5 +1,5 @@
-"""Giao diện SolveX v1.3.1 — Glassmorphism & Windows 11 Acrylic (Dark & Light Mode),
-Vector Icons 2.0 Sang Trọng, Đa Ngôn Ngữ, GitHub Auto Update (hbminh2508-design/SolveX).
+"""Giao diện SolveX v1.4.0 — Liquid Glass 3.0 & WinUI 3 Liquid Acrylic,
+Master Vector Icons v3.0, Đa Ngôn Ngữ, GitHub Auto Update (hbminh2508-design/SolveX).
 """
 
 import html as html_lib
@@ -90,7 +90,7 @@ def _draw_fallback_icon() -> QIcon:
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(QColor(style.AMBER))
-    painter.drawRoundedRect(2, 2, 60, 60, 16, 16)
+    painter.drawRoundedRect(2, 2, 60, 60, 18, 18)
     painter.setPen(QColor("#ffffff"))
     font = painter.font()
     font.setBold(True)
@@ -192,7 +192,7 @@ class CaptionButton(QPushButton):
 
 
 # --------------------------------------------------------------------------
-# Compact Top Bar Window (Glassmorphism & 100% Vector Icons v2.0)
+# Compact Top Bar Window (Liquid Glass 3.0 & Master Icons v3.0)
 # --------------------------------------------------------------------------
 class CompactWindow(QWidget):
     def __init__(self, main_window):
@@ -329,7 +329,7 @@ class CompactWindow(QWidget):
         p = style.get_palette(self.main.config.get("theme", "dark"))
         painter.setPen(QPen(QColor(p["BORDER"]), 1))
         painter.setBrush(QColor(p["PANEL_SOLID"]))
-        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 12, 12)
+        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 14, 14)
         painter.end()
 
     def showEvent(self, event):
@@ -402,7 +402,7 @@ class BusyIndicator(QWidget):
         p = style.get_palette(self.theme)
         painter.setPen(QPen(QColor(p["BORDER"]), 1))
         painter.setBrush(QColor(p["PANEL_SOLID"]))
-        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 12, 12)
+        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 14, 14)
         painter.end()
 
     def show_near(self, anchor: QWidget):
@@ -424,7 +424,7 @@ class BusyIndicator(QWidget):
 
 
 # --------------------------------------------------------------------------
-# Cửa sổ chính MainWindow (Glassmorphism & Windows 11 Acrylic)
+# Cửa sổ chính MainWindow (Liquid Glass 3.0 UI/UX)
 # --------------------------------------------------------------------------
 class MainWindow(QMainWindow):
     SYSTEM_INSTRUCTION = (
@@ -561,10 +561,6 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(style.get_stylesheet(theme_name))
         if hasattr(self, "toolbar") and self.toolbar:
             self.toolbar.setStyleSheet(style.get_compact_stylesheet(theme_name))
-        if hasattr(self, "btn_quick_theme"):
-            is_dark = theme_name == "dark"
-            self.btn_quick_theme.setIcon(IconFactory.draw_icon("moon" if is_dark else "sun", style.AMBER, 16))
-            self.btn_quick_theme.setText("Dark" if is_dark else "Light")
         fluent.apply_mica(self, dark_mode=(theme_name == "dark"), glass_mode=True)
         self._render_chat()
 
@@ -624,7 +620,7 @@ class MainWindow(QMainWindow):
         self._shutdown()
         QApplication.instance().quit()
 
-    # ------------------ Xây dựng Glassmorphism UI ------------------
+    # ------------------ Xây dựng Liquid Glass UI ------------------
     def _build_ui(self):
         root = QWidget()
         self.setCentralWidget(root)
@@ -632,17 +628,17 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # 2026 Glassmorphism Floating Sidebar
+        # Floating Sidebar Liquid Glass 3.0
         sidebar = QFrame()
         sidebar.setObjectName("NavSidebar")
         sidebar.setFixedWidth(215)
         s_box = QVBoxLayout(sidebar)
-        s_box.setContentsMargins(10, 16, 10, 16)
-        s_box.setSpacing(6)
+        s_box.setContentsMargins(12, 18, 12, 18)
+        s_box.setSpacing(8)
 
         brand_box = QHBoxLayout()
         logo = QLabel()
-        logo.setPixmap(build_app_icon().pixmap(24, 24))
+        logo.setPixmap(build_app_icon().pixmap(26, 26))
         brand_box.addWidget(logo)
         title_box = QVBoxLayout()
         brand_lbl = QLabel("SolveX")
@@ -678,41 +674,18 @@ class MainWindow(QMainWindow):
         r_layout.setContentsMargins(0, 0, 0, 0)
         r_layout.setSpacing(0)
 
+        # Header Bar — ĐÃ XOÁ HOÀN TOÀN CÁC NÚT BẤM TRÙNG LẶP THEO ẢNH YÊU CẦU
         header = QFrame()
         header.setObjectName("HeaderBar")
-        header.setFixedHeight(46)
+        header.setFixedHeight(42)
         h_layout = QHBoxLayout(header)
-        h_layout.setContentsMargins(14, 6, 14, 6)
+        h_layout.setContentsMargins(18, 6, 18, 6)
         h_layout.setSpacing(10)
 
-        page_title = QLabel("SolveX v" + APP_VERSION)
-        page_title.setStyleSheet("font-weight:bold; font-size:14px;")
+        page_title = QLabel("SolveX Liquid Glass v" + APP_VERSION)
+        page_title.setStyleSheet("font-weight:600; font-size:13px; color:" + style.MUTED + ";")
         h_layout.addWidget(page_title)
         h_layout.addStretch(1)
-
-        self.btn_quick_theme = QPushButton("Dark")
-        self.btn_quick_theme.setObjectName("HeaderQuickBtn")
-        self.btn_quick_theme.setIcon(IconFactory.draw_icon("moon", style.AMBER, 16))
-        self.btn_quick_theme.clicked.connect(self._toggle_theme)
-        h_layout.addWidget(self.btn_quick_theme)
-
-        self.btn_quick_lang = QPushButton(i18n.t("quick_lang"))
-        self.btn_quick_lang.setObjectName("HeaderQuickBtn")
-        self.btn_quick_lang.setIcon(IconFactory.draw_icon("globe", style.TEXT, 16))
-        self.btn_quick_lang.clicked.connect(self._toggle_lang)
-        h_layout.addWidget(self.btn_quick_lang)
-
-        btn_quick_top = QPushButton(i18n.t("quick_compact"))
-        btn_quick_top.setObjectName("HeaderQuickBtn")
-        btn_quick_top.setIcon(IconFactory.draw_icon("camera", style.TEXT, 16))
-        btn_quick_top.clicked.connect(self._toggle_toolbar)
-        h_layout.addWidget(btn_quick_top)
-
-        btn_quick_upd = QPushButton(i18n.t("quick_update"))
-        btn_quick_upd.setObjectName("HeaderQuickBtn")
-        btn_quick_upd.setIcon(IconFactory.draw_icon("update", style.TEAL, 16))
-        btn_quick_upd.clicked.connect(self.on_check_update)
-        h_layout.addWidget(btn_quick_upd)
 
         r_layout.addWidget(header)
 
@@ -743,35 +716,18 @@ class MainWindow(QMainWindow):
         btn.clicked.connect(lambda: self.stack.setCurrentIndex(index))
         return btn
 
-    def _toggle_theme(self):
-        curr = self.config.get("theme", "dark")
-        new_theme = "light" if curr == "dark" else "dark"
-        self.apply_theme(new_theme)
-        if hasattr(self, "theme_dark_rad"):
-            if new_theme == "light":
-                self.theme_light_rad.setChecked(True)
-            else:
-                self.theme_dark_rad.setChecked(True)
-
-    def _toggle_lang(self):
-        curr = self.config.get("language", "vi")
-        new_lang = "en" if curr == "vi" else "vi"
-        i18n.set_language(new_lang)
-        self.config.set("language", new_lang)
-        self.config.save()
-
     # Tab 1: Chat Page
     def _build_chat_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(10)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
 
         top_card = QFrame()
         top_card.setObjectName("Card")
         t_row = QHBoxLayout(top_card)
-        t_row.setContentsMargins(12, 10, 12, 10)
-        t_row.setSpacing(10)
+        t_row.setContentsMargins(14, 12, 14, 12)
+        t_row.setSpacing(12)
 
         self.btn_solve_main = QPushButton(i18n.t("btn_solve_normal") + " (F2)")
         self.btn_solve_main.setObjectName("Solve")
@@ -835,8 +791,8 @@ class MainWindow(QMainWindow):
     def _build_history_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(10)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
 
         header_row = QHBoxLayout()
         title = QLabel(i18n.t("hist_title"))
@@ -1065,7 +1021,7 @@ class MainWindow(QMainWindow):
     def _build_changelog_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setContentsMargins(16, 16, 16, 16)
         browser = QTextBrowser()
         browser.setObjectName("Chat")
         browser.setOpenExternalLinks(True)
