@@ -1,9 +1,20 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.3.1"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.3.1",
+        "2026-08-01",
+        [
+            "Làm mới giao diện theo phong cách Kính Mờ (Glassmorphism & Windows 11 Acrylic) siêu sang trọng, tối ưu hiệu năng mượt mà.",
+            "Tái thiết kế 100% bộ Vector Icons 2.0 theo phong cách đường nét nét mảnh tỉ lệ 1.75px cao cấp, hiện đại.",
+            "Nâng cấp bo góc 16px vô cùng mềm mại trên toàn bộ Floating Sidebar, Thẻ điều khiển (Cards) và Khung hội thoại.",
+            "Tối ưu hoá hiệu ứng chuyển trang và làm mới giao diện kính mờ cả ở Dark Mode và Light Mode.",
+            "Tích hợp sẵn sàng cho hệ thống Cập nhật Online trực tiếp thông qua ứng dụng.",
+        ],
+    ),
     (
         "1.3.0",
         "2026-08-01",
@@ -36,24 +47,14 @@ CHANGELOG = [
         [
             "Giao diện làm mới theo phong cách Fluent/WinUI3, đồng bộ với Windows 11.",
             "Thêm logo nhận diện riêng cho SolveX — dùng làm icon ứng dụng và icon khay hệ thống.",
-            "Bảng điều khiển giờ là một cửa sổ thật: có nút riêng để thu xuống khay hệ "
-            "thống, đặt cạnh 3 nút thu nhỏ / phóng to / đóng quen thuộc.",
-            "Thêm ô 'Đang giải…' hiện góc màn hình khi bấm giải bài lúc đang ở chế độ "
-            "khay hệ thống, để biết ứng dụng đang xử lý chứ không phải bị treo.",
-            "Sửa lỗi ẩn cửa sổ trước khi chụp bị trễ khiến ảnh chụp dính cả cửa sổ SolveX.",
-            "Sửa lỗi ảnh xem trước đôi khi không cập nhật sau mỗi lần chụp.",
-            "Thêm cửa sổ popup hiện đáp án ngay sau khi giải xong.",
-            "Thêm mục xem Nhật ký cập nhật (Release Notes) ngay trong ứng dụng.",
+            "Bảng điều khiển giờ là một cửa sổ thật: có nút riêng để thu xuống khay hệ thống.",
         ],
     ),
     (
         "1.0.0",
         "2026-07-29",
         [
-            "Phát hành SolveX: chụp đề bài, giải bài thường và giải bài nghe (Listening) "
-            "bằng Gemini API.",
-            "Chọn vùng chụp tuỳ ý hoặc chụp theo từng màn hình.",
-            "Chat hỏi thêm về lời giải ngay trong ứng dụng.",
+            "Phát hành SolveX: chụp đề bài, giải bài thường và giải bài nghe (Listening) bằng Gemini API.",
         ],
     ),
 ]

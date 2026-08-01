@@ -1,6 +1,5 @@
-"""Giao diện SolveX v1.3.0 — Thiết kế 2026 (Floating Sidebar & Menu Bar), Đa ngôn ngữ (VI/EN),
-Tối ưu Anti-stuttering, Sửa triệt để ẩn cửa sổ khi chụp, GitHub Update (hbminh2508-design/SolveX),
-Vector Icons 100% không dùng emoji.
+"""Giao diện SolveX v1.3.1 — Glassmorphism & Windows 11 Acrylic (Dark & Light Mode),
+Vector Icons 2.0 Sang Trọng, Đa Ngôn Ngữ, GitHub Auto Update (hbminh2508-design/SolveX).
 """
 
 import html as html_lib
@@ -91,7 +90,7 @@ def _draw_fallback_icon() -> QIcon:
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(QColor(style.AMBER))
-    painter.drawRoundedRect(2, 2, 60, 60, 14, 14)
+    painter.drawRoundedRect(2, 2, 60, 60, 16, 16)
     painter.setPen(QColor("#ffffff"))
     font = painter.font()
     font.setBold(True)
@@ -193,7 +192,7 @@ class CaptionButton(QPushButton):
 
 
 # --------------------------------------------------------------------------
-# Compact Top Bar Window (100% Vector Icons)
+# Compact Top Bar Window (Glassmorphism & 100% Vector Icons v2.0)
 # --------------------------------------------------------------------------
 class CompactWindow(QWidget):
     def __init__(self, main_window):
@@ -329,13 +328,13 @@ class CompactWindow(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         p = style.get_palette(self.main.config.get("theme", "dark"))
         painter.setPen(QPen(QColor(p["BORDER"]), 1))
-        painter.setBrush(QColor(p["PANEL"]))
-        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 10, 10)
+        painter.setBrush(QColor(p["PANEL_SOLID"]))
+        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 12, 12)
         painter.end()
 
     def showEvent(self, event):
         super().showEvent(event)
-        fluent.apply_mica(self)
+        fluent.apply_mica(self, dark_mode=(self.main.config.get("theme", "dark") == "dark"), glass_mode=True)
 
 
 # --------------------------------------------------------------------------
@@ -402,8 +401,8 @@ class BusyIndicator(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         p = style.get_palette(self.theme)
         painter.setPen(QPen(QColor(p["BORDER"]), 1))
-        painter.setBrush(QColor(p["PANEL"]))
-        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 10, 10)
+        painter.setBrush(QColor(p["PANEL_SOLID"]))
+        painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 12, 12)
         painter.end()
 
     def show_near(self, anchor: QWidget):
@@ -425,7 +424,7 @@ class BusyIndicator(QWidget):
 
 
 # --------------------------------------------------------------------------
-# Cửa sổ chính MainWindow — Thiết kế 2026 (Floating Sidebar & Menu Bar)
+# Cửa sổ chính MainWindow (Glassmorphism & Windows 11 Acrylic)
 # --------------------------------------------------------------------------
 class MainWindow(QMainWindow):
     SYSTEM_INSTRUCTION = (
@@ -475,14 +474,14 @@ class MainWindow(QMainWindow):
 
     def showEvent(self, event):
         super().showEvent(event)
-        fluent.apply_mica(self)
+        is_dark = self.config.get("theme", "dark") == "dark"
+        fluent.apply_mica(self, dark_mode=is_dark, glass_mode=True)
 
     # ------------------ Native Menu Bar ------------------
     def _build_menu_bar(self):
         menubar = self.menuBar()
         menubar.clear()
 
-        # 1. Menu Tệp (File)
         file_menu = menubar.addMenu(i18n.t("menu_file"))
         act_new = QAction(IconFactory.draw_icon("plus", style.TEXT, 16), i18n.t("btn_new_chat"), self)
         act_new.triggered.connect(self.on_new_chat)
@@ -501,7 +500,6 @@ class MainWindow(QMainWindow):
         act_exit.triggered.connect(self.quit_app)
         file_menu.addAction(act_exit)
 
-        # 2. Menu Giao diện (View / Theme)
         view_menu = menubar.addMenu(i18n.t("menu_view"))
         act_dark = QAction(IconFactory.draw_icon("moon", style.AMBER, 16), i18n.t("quick_theme_dark"), self)
         act_dark.triggered.connect(lambda: self.apply_theme("dark"))
@@ -516,7 +514,6 @@ class MainWindow(QMainWindow):
         act_topbar.triggered.connect(self._toggle_toolbar)
         view_menu.addAction(act_topbar)
 
-        # 3. Menu Ngôn ngữ (Language)
         lang_menu = menubar.addMenu(i18n.t("menu_language"))
         act_vi = QAction(IconFactory.draw_icon("globe", style.TEXT, 16), "Tiếng Việt", self)
         act_vi.triggered.connect(lambda: self._set_language_code("vi"))
@@ -526,7 +523,6 @@ class MainWindow(QMainWindow):
         act_en.triggered.connect(lambda: self._set_language_code("en"))
         lang_menu.addAction(act_en)
 
-        # 4. Menu Cài đặt (Settings)
         set_menu = menubar.addMenu(i18n.t("menu_settings"))
         act_open_set = QAction(IconFactory.draw_icon("settings", style.TEXT, 16), i18n.t("nav_settings"), self)
         act_open_set.triggered.connect(lambda: self.show_tab("settings"))
@@ -536,7 +532,6 @@ class MainWindow(QMainWindow):
         act_test_key.triggered.connect(self.on_test_api_key)
         set_menu.addAction(act_test_key)
 
-        # 5. Menu Trợ giúp (Help & Update)
         help_menu = menubar.addMenu(i18n.t("menu_help"))
         act_guide = QAction(IconFactory.draw_icon("guide", style.TEXT, 16), i18n.t("nav_guide"), self)
         act_guide.triggered.connect(lambda: self.show_tab("guide"))
@@ -570,6 +565,7 @@ class MainWindow(QMainWindow):
             is_dark = theme_name == "dark"
             self.btn_quick_theme.setIcon(IconFactory.draw_icon("moon" if is_dark else "sun", style.AMBER, 16))
             self.btn_quick_theme.setText("Dark" if is_dark else "Light")
+        fluent.apply_mica(self, dark_mode=(theme_name == "dark"), glass_mode=True)
         self._render_chat()
 
     # ------------------ Tray & Display Modes ------------------
@@ -628,7 +624,7 @@ class MainWindow(QMainWindow):
         self._shutdown()
         QApplication.instance().quit()
 
-    # ------------------ Xây dựng UI 2026 Floating Sidebar ------------------
+    # ------------------ Xây dựng Glassmorphism UI ------------------
     def _build_ui(self):
         root = QWidget()
         self.setCentralWidget(root)
@@ -636,10 +632,10 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # 2026 Floating Sidebar
+        # 2026 Glassmorphism Floating Sidebar
         sidebar = QFrame()
         sidebar.setObjectName("NavSidebar")
-        sidebar.setFixedWidth(210)
+        sidebar.setFixedWidth(215)
         s_box = QVBoxLayout(sidebar)
         s_box.setContentsMargins(10, 16, 10, 16)
         s_box.setSpacing(6)
@@ -677,13 +673,11 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(sidebar)
 
-        # Container bên phải
         right_container = QWidget()
         r_layout = QVBoxLayout(right_container)
         r_layout.setContentsMargins(0, 0, 0, 0)
         r_layout.setSpacing(0)
 
-        # Header Quick Action Toolbar
         header = QFrame()
         header.setObjectName("HeaderBar")
         header.setFixedHeight(46)
@@ -696,28 +690,24 @@ class MainWindow(QMainWindow):
         h_layout.addWidget(page_title)
         h_layout.addStretch(1)
 
-        # Quick Theme Toggle Button
         self.btn_quick_theme = QPushButton("Dark")
         self.btn_quick_theme.setObjectName("HeaderQuickBtn")
         self.btn_quick_theme.setIcon(IconFactory.draw_icon("moon", style.AMBER, 16))
         self.btn_quick_theme.clicked.connect(self._toggle_theme)
         h_layout.addWidget(self.btn_quick_theme)
 
-        # Quick Language Toggle Button
         self.btn_quick_lang = QPushButton(i18n.t("quick_lang"))
         self.btn_quick_lang.setObjectName("HeaderQuickBtn")
         self.btn_quick_lang.setIcon(IconFactory.draw_icon("globe", style.TEXT, 16))
         self.btn_quick_lang.clicked.connect(self._toggle_lang)
         h_layout.addWidget(self.btn_quick_lang)
 
-        # Quick Top Bar Open Button
         btn_quick_top = QPushButton(i18n.t("quick_compact"))
         btn_quick_top.setObjectName("HeaderQuickBtn")
         btn_quick_top.setIcon(IconFactory.draw_icon("camera", style.TEXT, 16))
         btn_quick_top.clicked.connect(self._toggle_toolbar)
         h_layout.addWidget(btn_quick_top)
 
-        # Quick GitHub Update Button
         btn_quick_upd = QPushButton(i18n.t("quick_update"))
         btn_quick_upd.setObjectName("HeaderQuickBtn")
         btn_quick_upd.setIcon(IconFactory.draw_icon("update", style.TEAL, 16))
@@ -726,7 +716,6 @@ class MainWindow(QMainWindow):
 
         r_layout.addWidget(header)
 
-        # Stack Pages
         self.stack = QStackedWidget()
         self.stack.addWidget(self._build_chat_page())
         self.stack.addWidget(self._build_history_page())
@@ -885,7 +874,6 @@ class MainWindow(QMainWindow):
         box.setContentsMargins(20, 16, 20, 20)
         box.setSpacing(16)
 
-        # Section 1: General & Theme
         box.addWidget(self._section_lbl("st_section_general"))
         gen_card = QFrame()
         gen_card.setObjectName("Card")
@@ -920,7 +908,6 @@ class MainWindow(QMainWindow):
 
         box.addWidget(gen_card)
 
-        # Section 2: API Config
         box.addWidget(self._section_lbl("st_section_api"))
         api_card = QFrame()
         api_card.setObjectName("Card")
@@ -949,7 +936,6 @@ class MainWindow(QMainWindow):
 
         box.addWidget(api_card)
 
-        # Section 3: Capture & Audio
         box.addWidget(self._section_lbl("st_section_capture"))
         cap_card = QFrame()
         cap_card.setObjectName("Card")
@@ -969,7 +955,6 @@ class MainWindow(QMainWindow):
 
         box.addWidget(cap_card)
 
-        # Section 4: Prompts
         box.addWidget(self._section_lbl("st_section_prompts"))
         prompt_card = QFrame()
         prompt_card.setObjectName("Card")
@@ -987,7 +972,6 @@ class MainWindow(QMainWindow):
 
         box.addWidget(prompt_card)
 
-        # Section 5: GitHub Online Update & Build
         box.addWidget(self._section_lbl("st_section_update"))
         upd_card = QFrame()
         upd_card.setObjectName("Card")

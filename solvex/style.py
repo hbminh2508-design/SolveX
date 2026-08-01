@@ -1,14 +1,15 @@
-"""Bảng màu và stylesheet dùng chung — Thiết kế 2026 WinUI 3 (Floating Sidebar & Menu Bar).
-Góc bo 12-14px mềm mại, Floating Sidebar rời mép, Fluent Dark & Light Mode.
+"""Bảng màu và stylesheet Glassmorphism — WinUI 3 & Windows 11 Acrylic (Dark & Light Mode).
+Góc bo 16px siêu mềm mại, kính mờ bán trong suốt (frosted glass), đường viền phản quang mảnh.
 """
 
 FONT_STACK = '"Segoe UI Variable Display", "Segoe UI Variable Text", "Segoe UI", sans-serif'
 
 DARK_PALETTE = {
-    "INK": "#18181b",
-    "PANEL": "#242427",
-    "PANEL_LIGHT": "#2d2d32",
-    "BORDER": "#38383e",
+    "INK": "#141417",
+    "PANEL": "rgba(32, 32, 38, 0.78)",
+    "PANEL_SOLID": "#202025",
+    "PANEL_LIGHT": "rgba(45, 45, 52, 0.75)",
+    "BORDER": "rgba(255, 255, 255, 0.12)",
     "BORDER_FOCUS": "#f59e0b",
     "TEXT": "#ffffff",
     "MUTED": "#a1a1aa",
@@ -18,13 +19,14 @@ DARK_PALETTE = {
 }
 
 LIGHT_PALETTE = {
-    "INK": "#f4f4f5",
-    "PANEL": "#ffffff",
-    "PANEL_LIGHT": "#f8fafc",
-    "BORDER": "#e4e4e7",
+    "INK": "#f4f4f6",
+    "PANEL": "rgba(255, 255, 255, 0.82)",
+    "PANEL_SOLID": "#ffffff",
+    "PANEL_LIGHT": "rgba(241, 245, 249, 0.85)",
+    "BORDER": "rgba(0, 0, 0, 0.08)",
     "BORDER_FOCUS": "#d97706",
     "TEXT": "#09090b",
-    "MUTED": "#71717a",
+    "MUTED": "#64748b",
     "AMBER": "#d97706",
     "TEAL": "#059669",
     "RED": "#dc2626",
@@ -47,9 +49,9 @@ def get_palette(theme: str = "dark") -> dict:
 
 def get_stylesheet(theme: str = "dark") -> str:
     p = get_palette(theme)
-    hover_bg = "#e2e8f0" if theme == "light" else "#383838"
-    pressed_bg = "#cbd5e1" if theme == "light" else "#222222"
-    disabled_fg = "#94a3b8" if theme == "light" else "#666666"
+    hover_bg = "rgba(255, 255, 255, 0.08)" if theme == "dark" else "rgba(0, 0, 0, 0.05)"
+    pressed_bg = "rgba(255, 255, 255, 0.14)" if theme == "dark" else "rgba(0, 0, 0, 0.10)"
+    disabled_fg = "#94a3b8" if theme == "light" else "#555555"
 
     return f"""
 QWidget {{
@@ -59,7 +61,7 @@ QWidget {{
     font-size: 13px;
 }}
 
-/* Native Menu Bar */
+/* Native Menu Bar Glass */
 QMenuBar {{
     background: {p['INK']};
     color: {p['TEXT']};
@@ -69,7 +71,7 @@ QMenuBar {{
 QMenuBar::item {{
     background: transparent;
     padding: 6px 12px;
-    border-radius: 4px;
+    border-radius: 6px;
 }}
 QMenuBar::item:selected {{
     background: {p['PANEL_LIGHT']};
@@ -77,33 +79,33 @@ QMenuBar::item:selected {{
 }}
 
 QMenu {{
-    background: {p['PANEL']};
+    background: {p['PANEL_SOLID']};
     color: {p['TEXT']};
     border: 1px solid {p['BORDER']};
-    border-radius: 8px;
-    padding: 4px;
+    border-radius: 12px;
+    padding: 6px;
 }}
 QMenu::item {{
-    padding: 6px 20px 6px 12px;
-    border-radius: 4px;
+    padding: 7px 20px 7px 12px;
+    border-radius: 6px;
 }}
 QMenu::item:selected {{
     background: {p['PANEL_LIGHT']};
     color: {p['AMBER']};
 }}
 
-/* Floating Sidebar 2026 */
+/* Floating Sidebar Glassmorphism */
 QFrame#NavSidebar {{
     background: {p['PANEL']};
     border: 1px solid {p['BORDER']};
-    border-radius: 14px;
-    margin: 10px 4px 10px 10px;
+    border-radius: 16px;
+    margin: 12px 6px 12px 12px;
 }}
 
 QPushButton#NavBtn {{
     background: transparent;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 11px 14px;
     text-align: left;
     color: {p['MUTED']};
@@ -111,27 +113,27 @@ QPushButton#NavBtn {{
     font-weight: 500;
 }}
 QPushButton#NavBtn:hover {{
-    background: {p['PANEL_LIGHT']};
+    background: {hover_bg};
     color: {p['TEXT']};
 }}
 QPushButton#NavBtn:checked {{
-    background: {"#f1f5f9" if theme == "light" else "#323238"};
+    background: {"rgba(217, 119, 6, 0.15)" if theme == "light" else "rgba(245, 158, 11, 0.18)"};
     color: {p['AMBER']};
     font-weight: 600;
     border-left: 3.5px solid {p['AMBER']};
 }}
 
-/* Header Toolbar */
+/* Header Toolbar Glass */
 QFrame#HeaderBar {{
     background: {p['PANEL']};
     border-bottom: 1px solid {p['BORDER']};
 }}
 
-/* Panels and Cards */
+/* Panels and Glass Cards */
 QFrame#Panel, QFrame#Card {{
     background: {p['PANEL']};
     border: 1px solid {p['BORDER']};
-    border-radius: 12px;
+    border-radius: 16px;
 }}
 
 QLabel#Brand {{
@@ -155,7 +157,7 @@ QLabel#SectionLabel {{
 QLabel#Preview {{
     background: {p['INK']};
     border: 1px dashed {p['BORDER']};
-    border-radius: 8px;
+    border-radius: 12px;
     color: {p['MUTED']};
 }}
 
@@ -163,8 +165,8 @@ QLabel#Preview {{
 QLineEdit, QPlainTextEdit, QComboBox, QSpinBox, QTextEdit {{
     background: {p['PANEL_LIGHT']};
     border: 1px solid {p['BORDER']};
-    border-radius: 8px;
-    padding: 7px 10px;
+    border-radius: 10px;
+    padding: 8px 12px;
     color: {p['TEXT']};
     selection-background-color: {p['AMBER']};
     selection-color: #ffffff;
@@ -176,8 +178,9 @@ QLineEdit:focus, QPlainTextEdit:focus, QComboBox:focus, QTextEdit:focus {{
 
 QComboBox::drop-down {{ border: none; width: 22px; }}
 QComboBox QAbstractItemView {{
-    background: {p['PANEL_LIGHT']};
+    background: {p['PANEL_SOLID']};
     border: 1px solid {p['BORDER']};
+    border-radius: 8px;
     selection-background-color: {p['AMBER']};
     selection-color: #ffffff;
 }}
@@ -186,7 +189,7 @@ QComboBox QAbstractItemView {{
 QPushButton {{
     background: {p['PANEL_LIGHT']};
     border: 1px solid {p['BORDER']};
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 8px 16px;
     color: {p['TEXT']};
     font-weight: 500;
@@ -198,8 +201,8 @@ QPushButton:disabled {{ color: {disabled_fg}; border-color: {p['BORDER']}; }}
 QPushButton#HeaderQuickBtn {{
     background: {p['PANEL_LIGHT']};
     border: 1px solid {p['BORDER']};
-    border-radius: 6px;
-    padding: 5px 10px;
+    border-radius: 8px;
+    padding: 5px 12px;
     font-size: 12px;
     font-weight: 600;
 }}
@@ -210,6 +213,7 @@ QPushButton#PrimaryBtn {{
     color: #ffffff;
     border: none;
     font-weight: 600;
+    border-radius: 10px;
 }}
 QPushButton#PrimaryBtn:hover {{ background: #f59e0b; }}
 
@@ -219,8 +223,8 @@ QPushButton#Solve {{
     border: none;
     font-size: 14px;
     font-weight: 700;
-    padding: 12px 16px;
-    border-radius: 10px;
+    padding: 12px 18px;
+    border-radius: 12px;
 }}
 QPushButton#Solve:hover {{ background: #f59e0b; }}
 
@@ -230,8 +234,8 @@ QPushButton#Listen {{
     border: none;
     font-size: 14px;
     font-weight: 700;
-    padding: 12px 16px;
-    border-radius: 10px;
+    padding: 12px 18px;
+    border-radius: 12px;
 }}
 QPushButton#Listen:hover {{ background: #10b981; }}
 
@@ -241,8 +245,8 @@ QPushButton#Listening {{
     border: none;
     font-size: 14px;
     font-weight: 700;
-    padding: 12px 16px;
-    border-radius: 10px;
+    padding: 12px 18px;
+    border-radius: 12px;
 }}
 QPushButton#Listening:hover {{ background: #ef4444; }}
 
@@ -251,7 +255,7 @@ QPushButton#Send {{
     color: #ffffff;
     border: none;
     font-weight: 700;
-    border-radius: 8px;
+    border-radius: 10px;
 }}
 
 QCheckBox, QRadioButton {{ spacing: 8px; color: {p['TEXT']}; }}
@@ -279,31 +283,31 @@ QProgressBar::chunk {{ background: {p['AMBER']}; border-radius: 3px; }}
 QTextBrowser#Chat {{
     background: {p['PANEL']};
     border: 1px solid {p['BORDER']};
-    border-radius: 12px;
-    padding: 10px;
+    border-radius: 16px;
+    padding: 12px;
 }}
 
 QListWidget {{
     background: {p['PANEL']};
     border: 1px solid {p['BORDER']};
-    border-radius: 10px;
-    padding: 4px;
+    border-radius: 12px;
+    padding: 6px;
 }}
 QListWidget::item {{
-    padding: 8px 10px;
-    border-radius: 6px;
-    margin-bottom: 2px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    margin-bottom: 3px;
 }}
-QListWidget::item:hover {{ background: {p['PANEL_LIGHT']}; }}
+QListWidget::item:hover {{ background: {hover_bg}; }}
 QListWidget::item:selected {{ background: {p['AMBER']}; color: #ffffff; font-weight: 600; }}
 
 QScrollBar:vertical {{
     background: transparent; width: 8px; margin: 2px;
 }}
 QScrollBar::handle:vertical {{
-    background: {"#cbd5e1" if theme == "light" else "#444444"}; border-radius: 4px; min-height: 28px;
+    background: {"rgba(0, 0, 0, 0.15)" if theme == "light" else "rgba(255, 255, 255, 0.2)"}; border-radius: 4px; min-height: 28px;
 }}
-QScrollBar::handle:vertical:hover {{ background: {"#94a3b8" if theme == "light" else "#666666"}; }}
+QScrollBar::handle:vertical:hover {{ background: {"rgba(0, 0, 0, 0.3)" if theme == "light" else "rgba(255, 255, 255, 0.35)"}; }}
 QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
 QScrollBar::add-page, QScrollBar::sub-page {{ background: none; }}
 
@@ -332,18 +336,18 @@ QPushButton#CaptionBtn, QPushButton#CaptionBtnClose {{
     font-size: 13px;
     padding: 0px;
 }}
-QPushButton#CaptionBtn:hover {{ background: {"#e2e8f0" if theme == "light" else "#383838"}; }}
+QPushButton#CaptionBtn:hover {{ background: {"rgba(0,0,0,0.06)" if theme == "light" else "rgba(255,255,255,0.1)"}; }}
 QPushButton#CaptionBtnClose:hover {{ background: {p['RED']}; color: #ffffff; }}
 
 QPushButton#ToolbarBtn {{
     background: {p['PANEL_LIGHT']};
     border: 1px solid {p['BORDER']};
-    border-radius: 8px;
-    padding: 8px 12px;
+    border-radius: 10px;
+    padding: 8px 14px;
     color: {p['TEXT']};
     font-weight: 600;
 }}
-QPushButton#ToolbarBtn:hover {{ background: {"#e2e8f0" if theme == "light" else "#3a3a3a"}; }}
+QPushButton#ToolbarBtn:hover {{ background: {"rgba(0,0,0,0.08)" if theme == "light" else "rgba(255,255,255,0.12)"}; }}
 """
 
 
@@ -369,16 +373,16 @@ def get_chat_css(theme: str = "dark") -> str:
     p = get_palette(theme)
     return f"""
 body {{ color: {p['TEXT']}; font-family: {FONT_STACK}; font-size: 13px; line-height: 1.5; }}
-pre {{ background: {p['INK']}; border: 1px solid {p['BORDER']}; border-radius: 6px;
+pre {{ background: {p['INK']}; border: 1px solid {p['BORDER']}; border-radius: 8px;
       padding: 10px; font-family: Consolas, "DejaVu Sans Mono", monospace; }}
-code {{ background: {p['INK']}; padding: 2px 4px; border-radius: 4px; font-family: Consolas, monospace; }}
+code {{ background: {p['INK']}; padding: 2px 5px; border-radius: 4px; font-family: Consolas, monospace; }}
 table {{ border-collapse: collapse; width: 100%; margin: 8px 0; }}
 th, td {{ border: 1px solid {p['BORDER']}; padding: 6px 10px; text-align: left; }}
 th {{ background: {p['PANEL_LIGHT']}; color: {p['AMBER']}; }}
 h1, h2, h3 {{ color: {p['AMBER']}; margin-top: 12px; margin-bottom: 6px; }}
 a {{ color: {p['TEAL']}; text-decoration: none; }}
 a:hover {{ text-decoration: underline; }}
-.question-img {{ border: 1px solid {p['BORDER']}; border-radius: 8px; margin: 8px 0; max-width: 100%; }}
+.question-img {{ border: 1px solid {p['BORDER']}; border-radius: 10px; margin: 8px 0; max-width: 100%; }}
 """
 
 STYLESHEET = get_stylesheet("dark")
