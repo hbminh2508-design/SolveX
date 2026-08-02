@@ -31,7 +31,7 @@ class CheckUpdateWorker(QThread):
 
     def run(self):
         remote_ver = None
-        changelog = "Có phiên bản mới v1.6.16 trên GitHub: Bộ chọn Chế độ học tập AI, Xuất file Markdown lời giải, UI/UX WinUI 3 Ultra mượt mà!"
+        changelog = "Có phiên bản mới v1.7 trên GitHub: Đồng bộ App Logo Khay Hệ Thống, Giao diện WinUI 3 Modern & Friendly mượt mà!"
         download_url = f"https://github.com/{TARGET_GITHUB_REPO}"
 
         # 1. Tải raw file version.py từ GitHub main branch

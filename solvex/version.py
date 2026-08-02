@@ -1,9 +1,19 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.6.8be0708"
+APP_VERSION = "1.7"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.7",
+        "2026-08-02",
+        [
+            "Đồng bộ biểu tượng khay hệ thống (System Tray Icon) sử dụng chính xác Logo thương hiệu SolveX cao cấp.",
+            "Chuyển cơ chế Kiểm Tra Cập Nhật sang chế độ thông báo trực quan cho người dùng tự xem và tải về từ GitHub (không tự động đóng gói file background).",
+            "Tái thiết kế giao diện WinUI 3 Modern & Friendly: Thẻ Card bo góc 16px mềm mại, độ tương phản dịu mắt, khoảng cách bố cục thoáng và thân thiện với người dùng.",
+            "Tối ưu hoá hiệu năng phản hồi AI Gemini và làm mượt thao tác chuyển đổi các Tab chức năng.",
+        ],
+    ),
     (
         "1.6.8be0708",
         "2026-08-02",

@@ -1,5 +1,5 @@
-"""Giao diện SolveX v1.6.16 — WinUI 3 Ultra, AI Study Modes,
-Xuất File Markdown, Bộ lọc Lịch sử, GitHub Auto Update (hbminh2508-design/SolveX).
+"""Giao diện SolveX v1.7 — WinUI 3 Modern Friendly UI, App Logo Tray Icon,
+Manual Version Update Flow, GitHub Repository (hbminh2508-design/SolveX).
 """
 
 import html as html_lib
@@ -438,7 +438,7 @@ class BusyIndicator(QWidget):
 
 
 # --------------------------------------------------------------------------
-# Cửa sổ chính MainWindow (WinUI 3 Ultra v1.6.16)
+# Cửa sổ chính MainWindow (WinUI 3 Modern Friendly v1.7)
 # --------------------------------------------------------------------------
 class MainWindow(QMainWindow):
     SYSTEM_INSTRUCTION = (
@@ -584,15 +584,13 @@ class MainWindow(QMainWindow):
         self._load_config_into_ui()
         self._render_chat()
 
-    # ------------------ Tray & Display Modes ------------------
+    # ------------------ System Tray Icon Đồng Bộ 100% Logo ------------------
     def _setup_tray(self):
         if not QSystemTrayIcon.isSystemTrayAvailable():
             self.tray = None
             return
-        tray_icon = IconFactory.draw_icon("tray", style.AMBER, 32)
-        if tray_icon.isNull():
-            tray_icon = build_app_icon()
-        self.tray = QSystemTrayIcon(tray_icon, self)
+        # Dùng trực tiếp build_app_icon() để icon khay hệ thống giống hệt Logo ứng dụng
+        self.tray = QSystemTrayIcon(build_app_icon(), self)
         self.tray.setToolTip("SolveX v" + APP_VERSION)
 
         menu = QMenu()
@@ -645,7 +643,7 @@ class MainWindow(QMainWindow):
         self._shutdown()
         QApplication.instance().quit()
 
-    # ------------------ Xây dựng WinUI 3 UI ------------------
+    # ------------------ Xây dựng WinUI 3 UI v1.7 ------------------
     def _build_ui(self):
         root = QWidget()
         self.setCentralWidget(root)
@@ -701,7 +699,7 @@ class MainWindow(QMainWindow):
         r_layout.setContentsMargins(0, 0, 0, 0)
         r_layout.setSpacing(0)
 
-        # Header Bar Chuẩn WinUI 3: "SolveX v1.6.16"
+        # Header Bar Chuẩn WinUI 3: "SolveX v1.7"
         header = QFrame()
         header.setObjectName("HeaderBar")
         header.setFixedHeight(40)
@@ -743,7 +741,7 @@ class MainWindow(QMainWindow):
         btn.clicked.connect(lambda: self.stack.setCurrentIndex(index))
         return btn
 
-    # Tab 1: Chat Page (V1.6.16 BỔ SUNG CHẾ ĐỘ HỌC TẬP AI STUDY MODES)
+    # Tab 1: Chat Page
     def _build_chat_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -773,7 +771,6 @@ class MainWindow(QMainWindow):
         self.btn_capture_main.clicked.connect(self.on_pick_region)
         t_row.addWidget(self.btn_capture_main)
 
-        # Thanh chọn Chế độ Học tập AI (Study Modes)
         t_row.addSpacing(10)
         mode_lbl = QLabel(i18n.t("mode_label"))
         mode_lbl.setStyleSheet("background:transparent; font-weight:600;")
@@ -828,7 +825,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(input_row)
         return page
 
-    # Tab 2: History Page (BỔ SUNG NÚT XUẤT FILE MARKDOWN)
+    # Tab 2: History Page
     def _build_history_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -871,7 +868,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(splitter, 1)
         return page
 
-    # Tab 3: Settings Page — SỬA ĐỒNG BỘ 100% RADIO BUTTONS
+    # Tab 3: Settings Page
     def _build_settings_page(self) -> QWidget:
         page = QWidget()
         scroll = QScrollArea()
@@ -1214,8 +1211,9 @@ class MainWindow(QMainWindow):
         self.test_api_btn.setEnabled(True)
         self._error("Lỗi API Key", i18n.t("st_test_failed") + err)
 
+    # ------------------ Kiểm Tra Cập Nhật Thủ Công (Không Auto Build) ------------------
     def on_check_update(self):
-        self.status.showMessage("Đang kiểm tra cập nhật trên GitHub (hbminh2508-design/SolveX)...")
+        self.status.showMessage("Đang kiểm tra phiên bản mới trên GitHub (hbminh2508-design/SolveX)...")
         self.update_worker = CheckUpdateWorker()
         self.update_worker.up_to_date.connect(self._on_up_to_date)
         self.update_worker.update_available.connect(self._on_update_available)
@@ -1227,13 +1225,9 @@ class MainWindow(QMainWindow):
         self.status.showMessage(msg, 5000)
 
     def _on_update_available(self, ver: str, changelog: str, url: str):
-        msg = f"Đã có phiên bản mới v{ver} trên GitHub!\n\nRepo: https://github.com/hbminh2508-design/SolveX.git\n\nNội dung:\n{changelog}\n\nBạn có muốn tự động Build .exe mới ngay bây giờ không?"
-        reply = QMessageBox.question(
-            self, "SolveX GitHub Update Available", msg,
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-        if reply == QMessageBox.StandardButton.Yes:
-            self.on_build_exe()
+        msg = f"Đã có phiên bản mới v{ver} trên GitHub!\n\nGitHub Repo:\n{url}\n\nNhật ký cập nhật:\n{changelog}\n\nBạn có thể tự kiểm tra mã nguồn hoặc tải bản mới từ GitHub."
+        QMessageBox.information(self, "SolveX Update Available", msg)
+        self.status.showMessage(f"Đã có phiên bản mới v{ver} trên GitHub!", 6000)
 
     def on_build_exe(self):
         project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
