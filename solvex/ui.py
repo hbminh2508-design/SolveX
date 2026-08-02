@@ -1,6 +1,5 @@
-"""Giao diện SolveX v1.5.1 — WinUI 3 Fluent Design, Đa Ngôn Ngữ,
-Triệt tiêu vệt đen UI, Sao chép đáp án 1-Click, Bộ lọc Lịch sử,
-GitHub Auto Update (hbminh2508-design/SolveX).
+"""Giao diện SolveX v1.6.16 — WinUI 3 Ultra, AI Study Modes,
+Xuất File Markdown, Bộ lọc Lịch sử, GitHub Auto Update (hbminh2508-design/SolveX).
 """
 
 import html as html_lib
@@ -16,6 +15,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QFileDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -438,7 +438,7 @@ class BusyIndicator(QWidget):
 
 
 # --------------------------------------------------------------------------
-# Cửa sổ chính MainWindow (WinUI 3 Fluent Design v1.5.1)
+# Cửa sổ chính MainWindow (WinUI 3 Ultra v1.6.16)
 # --------------------------------------------------------------------------
 class MainWindow(QMainWindow):
     SYSTEM_INSTRUCTION = (
@@ -500,6 +500,10 @@ class MainWindow(QMainWindow):
         act_new = QAction(IconFactory.draw_icon("plus", style.TEXT, 16), i18n.t("btn_new_chat"), self)
         act_new.triggered.connect(self.on_new_chat)
         file_menu.addAction(act_new)
+
+        act_export = QAction(IconFactory.draw_icon("guide", style.AMBER, 16), i18n.t("btn_export_hist"), self)
+        act_export.triggered.connect(self.on_export_history)
+        file_menu.addAction(act_export)
 
         act_clear_hist = QAction(IconFactory.draw_icon("trash", style.RED, 16), i18n.t("btn_clear_all"), self)
         act_clear_hist.triggered.connect(self.on_clear_history)
@@ -697,7 +701,7 @@ class MainWindow(QMainWindow):
         r_layout.setContentsMargins(0, 0, 0, 0)
         r_layout.setSpacing(0)
 
-        # Header Bar Chuẩn WinUI 3: "SolveX v1.5.1" (SỬA TRIỆT ĐỂ VỆT ĐEN)
+        # Header Bar Chuẩn WinUI 3: "SolveX v1.6.16"
         header = QFrame()
         header.setObjectName("HeaderBar")
         header.setFixedHeight(40)
@@ -739,7 +743,7 @@ class MainWindow(QMainWindow):
         btn.clicked.connect(lambda: self.stack.setCurrentIndex(index))
         return btn
 
-    # Tab 1: Chat Page
+    # Tab 1: Chat Page (V1.6.16 BỔ SUNG CHẾ ĐỘ HỌC TẬP AI STUDY MODES)
     def _build_chat_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -768,6 +772,20 @@ class MainWindow(QMainWindow):
         self.btn_capture_main.setIcon(IconFactory.draw_icon("camera", style.TEXT, 16))
         self.btn_capture_main.clicked.connect(self.on_pick_region)
         t_row.addWidget(self.btn_capture_main)
+
+        # Thanh chọn Chế độ Học tập AI (Study Modes)
+        t_row.addSpacing(10)
+        mode_lbl = QLabel(i18n.t("mode_label"))
+        mode_lbl.setStyleSheet("background:transparent; font-weight:600;")
+        t_row.addWidget(mode_lbl)
+
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItem(i18n.t("mode_step"), "step")
+        self.mode_combo.addItem(i18n.t("mode_mcq"), "mcq")
+        self.mode_combo.addItem(i18n.t("mode_similar"), "similar")
+        self.mode_combo.addItem(i18n.t("mode_concept"), "concept")
+        self.mode_combo.setMinimumWidth(180)
+        t_row.addWidget(self.mode_combo)
 
         t_row.addStretch(1)
 
@@ -810,7 +828,7 @@ class MainWindow(QMainWindow):
         layout.addLayout(input_row)
         return page
 
-    # Tab 2: History Page (SỬA VỆT ĐEN & BỔ SUNG Ô TÌM KIẾM TỪ KHOÁ)
+    # Tab 2: History Page (BỔ SUNG NÚT XUẤT FILE MARKDOWN)
     def _build_history_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -825,9 +843,14 @@ class MainWindow(QMainWindow):
 
         self.hist_search_input = QLineEdit()
         self.hist_search_input.setPlaceholderText(i18n.t("hist_search_ph"))
-        self.hist_search_input.setFixedWidth(220)
+        self.hist_search_input.setFixedWidth(200)
         self.hist_search_input.textChanged.connect(self._filter_history_list)
         header_row.addWidget(self.hist_search_input)
+
+        export_btn = QPushButton(i18n.t("btn_export_hist"))
+        export_btn.setIcon(IconFactory.draw_icon("guide", style.AMBER, 16))
+        export_btn.clicked.connect(self.on_export_history)
+        header_row.addWidget(export_btn)
 
         clear_btn = QPushButton(i18n.t("btn_clear_all"))
         clear_btn.setIcon(IconFactory.draw_icon("trash", style.RED, 16))
@@ -1102,21 +1125,18 @@ class MainWindow(QMainWindow):
         self.prompt_normal_edit.setPlainText(self.config.get("prompt_normal", ""))
         self.prompt_listen_edit.setPlainText(self.config.get("prompt_listening", ""))
 
-        # 1. Đồng bộ Theme Radio Button 100%
         theme = self.config.get("theme", "dark")
         if theme == "light":
             self.theme_light_rad.setChecked(True)
         else:
             self.theme_dark_rad.setChecked(True)
 
-        # 2. Đồng bộ Language Radio Button 100%
         lang = self.config.get("language", "vi")
         if lang == "en":
             self.lang_en.setChecked(True)
         else:
             self.lang_vi.setChecked(True)
 
-        # 3. Đồng bộ Startup Mode
         mode = self.config.get("startup_mode", "compact")
         idx = self.start_combo.findData(mode)
         if idx >= 0:
@@ -1280,6 +1300,17 @@ class MainWindow(QMainWindow):
         self.capture_worker.failed.connect(lambda err: self._error("Chụp ảnh lỗi", err))
         self.capture_worker.start()
 
+    # ------------------ Tự Động Tùy Chỉnh Prompt Theo Chế Độ Học Tập ------------------
+    def _get_active_prompt(self, base_prompt: str) -> str:
+        mode = self.mode_combo.currentData() if hasattr(self, "mode_combo") else "step"
+        if mode == "mcq":
+            return base_prompt + "\n\n[YÊU CẦU ĐẶC BIỆT]: Chỉ đưa ra đáp án đúng nhanh gọn nhất (ví dụ: A. B. C. D), kèm 1-2 câu giải thích ngắn gọn."
+        elif mode == "similar":
+            return base_prompt + "\n\n[YÊU CẦU ĐẶC BIỆT]: Giải bài toán này, sau đó tạo thêm 2 bài tập tương tự kèm đáp án để người học tự luyện tập."
+        elif mode == "concept":
+            return base_prompt + "\n\n[YÊU CẦU ĐẶC BIỆT]: Giải thích chi tiết các công thức, khái niệm lý thuyết và định lý được sử dụng trong bài tập này."
+        return base_prompt
+
     # ------------------ Giải Bài Thường & Listening ------------------
     def on_solve_normal(self):
         if self._busy():
@@ -1295,7 +1326,8 @@ class MainWindow(QMainWindow):
             return
 
         img_path = self.history_mgr.save_image_for_session(self.current_session["id"], png)
-        prompt = self.config.get("prompt_normal")
+        raw_prompt = self.config.get("prompt_normal")
+        prompt = self._get_active_prompt(raw_prompt)
 
         self.history.append({"role": "user", "parts": [text_part(prompt), image_part(png)]})
         self.messages.append(("user", i18n.t("chat_user_captured"), img_path))
@@ -1367,7 +1399,10 @@ class MainWindow(QMainWindow):
     def _on_record_done(self, wav: bytes, duration: float):
         self._reset_listen_ui()
 
-        parts = [text_part(self.config.get("prompt_listening"))]
+        raw_prompt = self.config.get("prompt_listening")
+        prompt = self._get_active_prompt(raw_prompt)
+        parts = [text_part(prompt)]
+
         img_path = None
         if self.pending_shot:
             img_path = self.history_mgr.save_image_for_session(self.current_session["id"], self.pending_shot)
@@ -1517,7 +1552,7 @@ class MainWindow(QMainWindow):
         scrollbar = self.chat.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
 
-    # ------------------ History Tab Actions & Search Filter ------------------
+    # ------------------ History Tab Actions & Search Filter & Markdown Export ------------------
     def _refresh_history_list(self):
         self.hist_list.clear()
         sessions = self.history_mgr.list_sessions()
@@ -1556,6 +1591,35 @@ class MainWindow(QMainWindow):
             blocks.append(f"<div style='margin:8px 0;'><b style='color:{lbl_color};'>{role.upper()}:</b> {render_markdown(text)}{img_html}</div>")
         
         self.hist_preview.setHtml(f"<style>{style.get_chat_css(theme)}</style>{''.join(blocks)}")
+
+    def on_export_history(self):
+        if not self.messages:
+            self._error("Xuất File", "Hiện chưa có câu hỏi hoặc đáp án nào để xuất.")
+            return
+
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "Xuất File Lịch Sử Trò Chuyện SolveX",
+            f"SolveX_Solution_{self.current_session['id'][:8]}.md",
+            "Markdown Files (*.md);;Text Files (*.txt)"
+        )
+        if not filename:
+            return
+
+        lines = [f"# SolveX AI Solution Export — {self.current_session.get('timestamp', '')}\n\n"]
+        for item in self.messages:
+            role, text = item[0], item[1]
+            if role == "user":
+                lines.append(f"### 👤 Người dùng:\n{text}\n\n")
+            elif role == "model":
+                lines.append(f"### 🤖 SolveX AI:\n{text}\n\n---\n\n")
+
+        try:
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write("".join(lines))
+            QMessageBox.information(self, "SolveX Export", f"Đã xuất file thành công tại:\n{filename}")
+            self.status.showMessage(f"Đã xuất file: {filename}", 5000)
+        except Exception as exc:
+            self._error("Lỗi Xuất File", str(exc))
 
     def on_clear_history(self):
         reply = QMessageBox.question(
