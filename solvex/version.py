@@ -1,14 +1,14 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.6.16"
+APP_VERSION = "1.6.9e82cfa"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.6.16",
+        "1.6.9e82cfa",
         "2026-08-02",
         [
-            "Nâng cấp hệ thống đánh số phiên bản tự động dạng '1.6.<số_commit>' theo tiến trình Git.",
+            "Cập nhật định dạng hiển thị phiên bản chính xác theo mã Git Commit Hash ngắn: '1.6.9e82cfa'.",
             "Tích hợp Bộ Chọn Chế Độ Học Tập AI (AI Study & Exam Modes): Giải chi tiết từng bước, Giải trắc nghiệm siêu tốc, Tạo bài tập luyện tập tương tự, Giải thích khái niệm lý thuyết.",
             "Bổ sung tính năng Xuất Lịch Sử Trò Chuyện & Lời Giải ra file Markdown (.md) và HTML tiện lợi cho việc in ấn hoặc lưu trữ tài liệu học tập.",
             "Nâng cấp giao diện người dùng WinUI 3 Ultra: Thẻ Card viền Specular Highlight thanh lịch, hiệu ứng active mượt mà và khoảng cách bố cục tối ưu.",
