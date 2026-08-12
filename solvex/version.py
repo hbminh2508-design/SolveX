@@ -1,11 +1,11 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.7.2.5b18b0e"
+APP_VERSION = "1.7.2.3660273"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.7.2.5b18b0e",
+        "1.7.2.3660273",
         "2026-08-12",
         [
             "Tái thiết kế Icon Máy Ảnh Chụp Đề sắc nét và chuẩn máy ảnh thật (Camera Body + Lens + Shutter button).",
