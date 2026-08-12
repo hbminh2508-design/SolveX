@@ -102,17 +102,88 @@ def _simple_markdown_parse(text: str) -> str:
     return parsed
 
 
+GREEK_MAP = {
+    r"\Phi": "Φ", r"\phi": "φ", r"\alpha": "α", r"\beta": "β",
+    r"\gamma": "γ", r"\delta": "δ", r"\Delta": "Δ", r"\theta": "θ",
+    r"\lambda": "λ", r"\mu": "μ", r"\pi": "π", r"\sigma": "σ",
+    r"\omega": "ω", r"\Omega": "Ω", r"\tau": "τ", r"\epsilon": "ε",
+    r"\rho": "ρ", r"\eta": "η", r"\xi": "ξ", r"\psi": "ψ"
+}
+
+MATH_OPS = [
+    (r"\cdot", " · "), (r"\times", " × "), (r"\div", " ÷ "),
+    (r"\pm", " ± "), (r"\mp", " ∓ "), (r"\le", " ≤ "), (r"\leq", " ≤ "),
+    (r"\ge", " ≥ "), (r"\geq", " ≥ "), (r"\neq", " ≠ "), (r"\approx", " ≈ "),
+    (r"\infty", "∞"), (r"\rightarrow", " → "), (r"\to", " → "),
+    (r"\degree", "°"), (r"\circ", "°"),
+    (r"\cos", "cos "), (r"\sin", "sin "), (r"\tan", "tan "), (r"\cot", "cot "),
+    (r"\log", "log "), (r"\ln", "ln "), (r"\lim", "lim ")
+]
+
+
+def _convert_math_expr(expr: str) -> str:
+    """Chuyển đổi một công thức LaTeX ngắn sang chuỗi HTML."""
+    def frac_repl(match):
+        num, den = match.group(1), match.group(2)
+        return f"<span style='display:inline-block; vertical-align:middle; text-align:center; margin:0 2px;'><span style='border-bottom:1px solid; display:block; padding:0 2px;'>{num}</span><span style='display:block; padding:0 2px;'>{den}</span></span>"
+    
+    expr = re.sub(r'\\frac\{([^{}]+)\}\{([^{}]+)\}', frac_repl, expr)
+
+    def sqrt_repl(match):
+        content = match.group(1)
+        return f"√<span style='border-top:1px solid; padding-top:1px;'>{content}</span>"
+    
+    expr = re.sub(r'\\sqrt\{([^{}]+)\}', sqrt_repl, expr)
+
+    for k, v in GREEK_MAP.items():
+        expr = re.sub(re.escape(k) + r'(?![a-zA-Z])', v, expr)
+
+    for k, v in MATH_OPS:
+        expr = re.sub(re.escape(k) + r'(?![a-zA-Z])', v, expr)
+
+    expr = re.sub(r'\^\{([^{}]+)\}', r'<sup>\1</sup>', expr)
+    expr = re.sub(r'\^([0-9a-zA-Z+-]+)', r'<sup>\1</sup>', expr)
+    expr = re.sub(r'_\{([^{}]+)\}', r'<sub>\1</sub>', expr)
+    expr = re.sub(r'_([0-9a-zA-Z+-]+)', r'<sub>\1</sub>', expr)
+    expr = re.sub(r'\\([a-zA-Z]+)', r'\1', expr)
+    return expr.strip()
+
+
+def render_latex_math(text: str) -> str:
+    """Tự động phát hiện và chuyển đổi toàn bộ công thức LaTeX $...$ và $$...$$ sang HTML native."""
+    if not text:
+        return ""
+    
+    def display_repl(match):
+        inner = match.group(1)
+        conv = _convert_math_expr(inner)
+        return f"<div style='text-align:center; margin:10px 0; font-family:\"Cambria Math\", \"Times New Roman\", serif; font-size:15px; color:#0ea5e9; font-weight:bold;'>{conv}</div>"
+    
+    text = re.sub(r'\$\$(.*?)\$\$', display_repl, text, flags=re.DOTALL)
+
+    def inline_repl(match):
+        inner = match.group(1)
+        conv = _convert_math_expr(inner)
+        return f"<span style='font-family:\"Cambria Math\", \"Times New Roman\", serif; font-size:14px; color:#0ea5e9; font-weight:600;'>{conv}</span>"
+
+    text = re.sub(r'\$([^\$\n]+?)\$', inline_repl, text)
+    return text
+
+
 def render_markdown(text: str) -> str:
     if not text:
         return ""
+    
+    text_with_math = render_latex_math(text)
+
     if md_lib is not None:
         try:
             return md_lib.markdown(
-                text, extensions=["fenced_code", "tables", "nl2br", "sane_lists"]
+                text_with_math, extensions=["fenced_code", "tables", "nl2br", "sane_lists"]
             )
         except Exception:
             pass
-    return _simple_markdown_parse(text)
+    return _simple_markdown_parse(text_with_math)
 
 
 MATHJAX_SCRIPT = """

@@ -1,9 +1,18 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.6.d480d44"
+APP_VERSION = "1.8.7.97fd046"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.8.7.97fd046",
+        "2026-08-13",
+        [
+            "Tích hợp bộ chuyển đổi LaTeX Math sang Native HTML Renderer (render_latex_math): Tự động phát hiện và dịch công thức LaTeX toán/lý trong $...$ và $$...$$.",
+            "Khắc phục triệt để lỗi hiển thị mã LaTeX thô (ví dụ: $\\Phi = B \\cdot S \\cdot \\cos\\alpha$, $S$) trong cửa sổ đáp án QTextBrowser.",
+            "Tự động chuyển đổi các ký tự Hy Lạp (\\Phi -> Φ, \\alpha -> α, \\Delta -> Δ...), toán tử (\\cdot -> ·, \\cos -> cos, \\frac -> phân số HTML) và số mũ/chỉ số (x^2 -> x², x_0 -> x₀) hiển thị sắc nét như sách giáo khoa.",
+        ],
+    ),
     (
         "1.8.6.d480d44",
         "2026-08-13",
@@ -143,7 +152,7 @@ CHANGELOG = [
             "Khắc phục triệt để lỗi không đồng bộ cài đặt (chủ đề giao diện, ngôn ngữ hiển thị) trên trang Cài Đặt Hệ Thống.",
             "Tối giản giao diện WinUI 3 Fluent tiêu chuẩn, thiết kế thanh lịch, hiển thị tiêu đề chuẩn 'SolveX v1.5.0'.",
             "Đưa bộ biểu tượng Vector Icons về thiết kế nét mảnh 1.5px phẳng WinUI 3 sang trọng, tinh tế.",
-            "Tối ưu hoá tiến trình giải bài và phản hồi câu hỏi AI Gemini nhanh hơn, mượt hơn.",
+            "Tối ưu hoá hiệu năng phản hồi AI Gemini và làm mượt hơn.",
             "Phát hành phiên bản 1.5.0 hoàn chỉnh và hỗ trợ cập nhật tự động.",
         ],
     ),
