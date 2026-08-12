@@ -1,9 +1,22 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.7.1.b599aee"
+APP_VERSION = "1.7.2.5b18b0e"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.7.2.5b18b0e",
+        "2026-08-12",
+        [
+            "Tái thiết kế Icon Máy Ảnh Chụp Đề sắc nét và chuẩn máy ảnh thật (Camera Body + Lens + Shutter button).",
+            "Tái thiết kế Icon Nút Top Bar Nổi thành thanh ngang ở dưới có mũi tên chỉ lên (↑).",
+            "Bổ sung bộ chọn Chế Độ Giải Bài (Mode Combo) trực tiếp trên Thanh Top Bar Nổi (Compact Bar).",
+            "Tích hợp Chế độ Giao diện Tự động theo Hệ điều hành (Auto OS Theme) phát hiện chuẩn Windows Dark/Light.",
+            "Đồng bộ Cài đặt Tức thì (Live Settings Sync): Chuyển chủ đề hoặc ngôn ngữ tự áp dụng lập tức.",
+            "Tự động dừng tiến trình SolveX.exe cũ đang chạy để tránh lỗi khóa file khi build ứng dụng.",
+            "Bổ sung trang Hướng Dẫn Sử Dụng chi tiết và minh họa dễ hiểu.",
+        ],
+    ),
     (
         "1.7.1.b599aee",
         "2026-08-12",

@@ -29,16 +29,40 @@ class IconFactory:
         rect = QRectF(pad, pad, s - 2 * pad, s - 2 * pad)
 
         if name == "camera":
-            # Icon máy ảnh WinUI 3 cổ điển
-            x, y, w, h = rect.x(), rect.y() + rect.height() * 0.18, rect.width(), rect.height() * 0.74
+            # Icon Máy Ảnh Thực Tế (Camera Body + Lens + Shutter Button + Flash)
+            x, y, w, h = rect.x(), rect.y() + rect.height() * 0.15, rect.width(), rect.height() * 0.75
             path = QPainterPath()
+            # Thân máy ảnh hình chữ nhật bo góc
             path.addRoundedRect(QRectF(x, y, w, h), 4, 4)
-            path.moveTo(x + w * 0.3, y)
-            path.lineTo(x + w * 0.4, rect.y() + 2)
-            path.lineTo(x + w * 0.6, rect.y() + 2)
-            path.lineTo(x + w * 0.7, y)
-            cx, cy = rect.center().x(), y + h * 0.5
-            path.addEllipse(QPointF(cx, cy), w * 0.22, w * 0.22)
+            # Nút bấm chụp góc trên bên trái
+            path.moveTo(x + w * 0.18, y)
+            path.lineTo(x + w * 0.32, y)
+            # Khung ống ngắm / Đèn flash góc trên bên phải
+            path.moveTo(x + w * 0.62, y)
+            path.lineTo(x + w * 0.72, y - 2)
+            path.lineTo(x + w * 0.84, y - 2)
+            path.lineTo(x + w * 0.88, y)
+            # Ống kính máy ảnh chính giữa (Lens vòng đôi)
+            cx, cy = rect.center().x(), y + h * 0.52
+            path.addEllipse(QPointF(cx, cy), w * 0.28, w * 0.28)
+            path.addEllipse(QPointF(cx, cy), w * 0.14, w * 0.14)
+            painter.drawPath(path)
+
+        elif name in ("compact", "topbar"):
+            # Icon Nút Top Bar Nổi: Thanh Ngang ở dưới + Mũi Tên Hướng Lên (↑) ở trên
+            cx, cy = rect.center().x(), rect.center().y()
+            w, h = rect.width(), rect.height()
+            path = QPainterPath()
+            # Thanh ngang nằm dưới
+            path.moveTo(rect.x(), rect.y() + h * 0.88)
+            path.lineTo(rect.x() + w, rect.y() + h * 0.88)
+            # Thân mũi tên thẳng đứng chỉ lên trên (↑)
+            path.moveTo(cx, rect.y() + h * 0.74)
+            path.lineTo(cx, rect.y() + h * 0.08)
+            # Đầu mũi tên hướng lên
+            path.moveTo(cx - w * 0.28, rect.y() + h * 0.36)
+            path.lineTo(cx, rect.y() + h * 0.08)
+            path.lineTo(cx + w * 0.28, rect.y() + h * 0.36)
             painter.drawPath(path)
 
         elif name in ("solve", "sparkle"):
@@ -124,10 +148,8 @@ class IconFactory:
             r = rect.width() * 0.44
             path = QPainterPath()
             path.addEllipse(QPointF(cx, cy), r, r)
-            # Thân dấu chấm than
             path.moveTo(cx, cy - r * 0.48)
             path.lineTo(cx, cy + r * 0.1)
-            # Dấu chấm ở dưới
             path.moveTo(cx, cy + r * 0.42)
             path.lineTo(cx, cy + r * 0.52)
             painter.drawPath(path)
@@ -220,10 +242,8 @@ class IconFactory:
             cx, cy = rect.center().x(), rect.center().y()
             w, h = rect.width(), rect.height()
             path = QPainterPath()
-            # Thân mũi tên thẳng đứng
             path.moveTo(cx, rect.y() + h * 0.12)
             path.lineTo(cx, rect.y() + h * 0.82)
-            # Đầu mũi tên chĩa xuống dưới (↓)
             path.moveTo(cx - w * 0.3, rect.y() + h * 0.52)
             path.lineTo(cx, rect.y() + h * 0.82)
             path.lineTo(cx + w * 0.3, rect.y() + h * 0.52)

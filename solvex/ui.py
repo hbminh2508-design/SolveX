@@ -1,5 +1,5 @@
-"""Giao diện SolveX v1.7 — WinUI 3 Modern Friendly UI, App Logo Tray Icon,
-Manual Version Update Flow, GitHub Repository (hbminh2508-design/SolveX).
+"""Giao diện SolveX v1.7.2 — WinUI 3 Modern Friendly UI, App Logo Tray Icon,
+Manual Version Update Flow, Mode Combo on Floating Top Bar, Live Settings Sync & Auto OS Theme.
 """
 
 import html as html_lib
@@ -193,7 +193,7 @@ class CaptionButton(QPushButton):
 
 
 # --------------------------------------------------------------------------
-# Compact Top Bar Window
+# Compact Top Bar Window (Nâng cấp Bộ Chọn Chế Độ Giải Bài Mode Combo)
 # --------------------------------------------------------------------------
 class CompactWindow(QWidget):
     def __init__(self, main_window):
@@ -237,6 +237,16 @@ class CompactWindow(QWidget):
         self.listen_btn.clicked.connect(self.main.on_listening_clicked)
         row.addWidget(self.listen_btn)
 
+        # Bộ chọn chế độ làm bài ngay trên thanh Top Bar nổi
+        self.top_mode_combo = QComboBox()
+        self.top_mode_combo.addItem(i18n.t("mode_step"), "step")
+        self.top_mode_combo.addItem(i18n.t("mode_mcq"), "mcq")
+        self.top_mode_combo.addItem(i18n.t("mode_similar"), "similar")
+        self.top_mode_combo.addItem(i18n.t("mode_concept"), "concept")
+        self.top_mode_combo.setFixedWidth(160)
+        self.top_mode_combo.currentIndexChanged.connect(self._sync_mode_from_top)
+        row.addWidget(self.top_mode_combo)
+
         self.history_btn = QPushButton()
         self.history_btn.setIcon(IconFactory.draw_icon("history", style.TEXT, 16))
         self.history_btn.setObjectName("ToolbarBtn")
@@ -257,6 +267,17 @@ class CompactWindow(QWidget):
         screen = QGuiApplication.primaryScreen().availableGeometry()
         self.move(screen.center().x() - self.width() // 2, screen.top() + 20)
         i18n.language_changed.connect(self.update_strings)
+
+    def _sync_mode_from_top(self, index: int):
+        if hasattr(self.main, "mode_combo") and self.main.mode_combo:
+            self.main.mode_combo.blockSignals(True)
+            self.main.mode_combo.setCurrentIndex(index)
+            self.main.mode_combo.blockSignals(False)
+
+    def sync_mode_from_main(self, index: int):
+        self.top_mode_combo.blockSignals(True)
+        self.top_mode_combo.setCurrentIndex(index)
+        self.top_mode_combo.blockSignals(False)
 
     def update_strings(self):
         self.capture_btn.setText(i18n.t("btn_capture"))
@@ -438,7 +459,7 @@ class BusyIndicator(QWidget):
 
 
 # --------------------------------------------------------------------------
-# Cửa sổ chính MainWindow (WinUI 3 Modern Friendly v1.7)
+# Cửa sổ chính MainWindow (WinUI 3 Modern Friendly v1.7.2)
 # --------------------------------------------------------------------------
 class MainWindow(QMainWindow):
     SYSTEM_INSTRUCTION = (
@@ -488,7 +509,7 @@ class MainWindow(QMainWindow):
 
     def showEvent(self, event):
         super().showEvent(event)
-        is_dark = self.config.get("theme", "dark") == "dark"
+        is_dark = (self.config.get("theme", "dark") == "dark")
         fluent.apply_mica(self, dark_mode=is_dark, glass_mode=False)
 
     # ------------------ Native Menu Bar ------------------
@@ -527,8 +548,12 @@ class MainWindow(QMainWindow):
         act_light.triggered.connect(lambda: self.apply_theme("light"))
         view_menu.addAction(act_light)
 
+        act_auto = QAction(IconFactory.draw_icon("settings", style.TEAL, 16), "Tự động theo Hệ điều hành (Auto OS)", self)
+        act_auto.triggered.connect(lambda: self.apply_theme("auto"))
+        view_menu.addAction(act_auto)
+
         view_menu.addSeparator()
-        act_topbar = QAction(IconFactory.draw_icon("camera", style.TEXT, 16), i18n.t("quick_compact"), self)
+        act_topbar = QAction(IconFactory.draw_icon("topbar", style.TEXT, 16), i18n.t("quick_compact"), self)
         act_topbar.triggered.connect(self._toggle_toolbar)
         view_menu.addAction(act_topbar)
 
@@ -584,17 +609,15 @@ class MainWindow(QMainWindow):
         self._load_config_into_ui()
         self._render_chat()
 
-    # ------------------ System Tray Icon Đồng Bộ 100% Logo ------------------
     def _setup_tray(self):
         if not QSystemTrayIcon.isSystemTrayAvailable():
             self.tray = None
             return
-        # Dùng trực tiếp build_app_icon() để icon khay hệ thống giống hệt Logo ứng dụng
         self.tray = QSystemTrayIcon(build_app_icon(), self)
         self.tray.setToolTip("SolveX v" + APP_VERSION)
 
         menu = QMenu()
-        menu.addAction("Ẩn/Hiện Top Bar", self._toggle_toolbar)
+        menu.addAction("Ẩn/Hiện Top Bar Nổi", self._toggle_toolbar)
         menu.addAction(i18n.t("nav_settings"), lambda: self.show_tab("settings"))
         menu.addAction(i18n.t("nav_changelog"), self.show_release_notes)
         menu.addSeparator()
@@ -643,7 +666,7 @@ class MainWindow(QMainWindow):
         self._shutdown()
         QApplication.instance().quit()
 
-    # ------------------ Xây dựng WinUI 3 UI v1.7 ------------------
+    # ------------------ Xây dựng WinUI 3 UI v1.7.2 ------------------
     def _build_ui(self):
         root = QWidget()
         self.setCentralWidget(root)
@@ -651,7 +674,6 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # Floating Sidebar WinUI 3
         sidebar = QFrame()
         sidebar.setObjectName("NavSidebar")
         sidebar.setFixedWidth(210)
@@ -699,7 +721,6 @@ class MainWindow(QMainWindow):
         r_layout.setContentsMargins(0, 0, 0, 0)
         r_layout.setSpacing(0)
 
-        # Header Bar Chuẩn WinUI 3: "SolveX v1.7"
         header = QFrame()
         header.setObjectName("HeaderBar")
         header.setFixedHeight(40)
@@ -782,6 +803,7 @@ class MainWindow(QMainWindow):
         self.mode_combo.addItem(i18n.t("mode_similar"), "similar")
         self.mode_combo.addItem(i18n.t("mode_concept"), "concept")
         self.mode_combo.setMinimumWidth(180)
+        self.mode_combo.currentIndexChanged.connect(self._sync_mode_from_main)
         t_row.addWidget(self.mode_combo)
 
         t_row.addStretch(1)
@@ -824,6 +846,10 @@ class MainWindow(QMainWindow):
 
         layout.addLayout(input_row)
         return page
+
+    def _sync_mode_from_main(self, index: int):
+        if hasattr(self, "toolbar") and self.toolbar:
+            self.toolbar.sync_mode_from_main(index)
 
     # Tab 2: History Page
     def _build_history_page(self) -> QWidget:
@@ -868,7 +894,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(splitter, 1)
         return page
 
-    # Tab 3: Settings Page
+    # Tab 3: Settings Page (Live Settings Sync & Auto OS Theme)
     def _build_settings_page(self) -> QWidget:
         page = QWidget()
         scroll = QScrollArea()
@@ -890,12 +916,19 @@ class MainWindow(QMainWindow):
 
         self.theme_dark_rad = QRadioButton(i18n.t("st_theme_dark"))
         self.theme_light_rad = QRadioButton(i18n.t("st_theme_light"))
+        self.theme_auto_rad = QRadioButton("💻 Tự động theo Hệ điều hành (Auto OS)")
 
         self.theme_group.addButton(self.theme_dark_rad, 0)
         self.theme_group.addButton(self.theme_light_rad, 1)
+        self.theme_group.addButton(self.theme_auto_rad, 2)
+
+        self.theme_dark_rad.toggled.connect(self._on_live_theme_changed)
+        self.theme_light_rad.toggled.connect(self._on_live_theme_changed)
+        self.theme_auto_rad.toggled.connect(self._on_live_theme_changed)
 
         theme_row.addWidget(self.theme_dark_rad)
         theme_row.addWidget(self.theme_light_rad)
+        theme_row.addWidget(self.theme_auto_rad)
         theme_row.addStretch(1)
         g_layout.addLayout(theme_row)
         g_layout.addSpacing(10)
@@ -909,6 +942,9 @@ class MainWindow(QMainWindow):
 
         self.lang_group.addButton(self.lang_vi, 0)
         self.lang_group.addButton(self.lang_en, 1)
+
+        self.lang_vi.toggled.connect(self._on_live_lang_changed)
+        self.lang_en.toggled.connect(self._on_live_lang_changed)
 
         lang_row.addWidget(self.lang_vi)
         lang_row.addWidget(self.lang_en)
@@ -1022,7 +1058,20 @@ class MainWindow(QMainWindow):
         p_layout_outer.addWidget(scroll)
         return page
 
-    # Tab 4: User Guide Page
+    def _on_live_theme_changed(self):
+        if self.theme_auto_rad.isChecked():
+            theme = "auto"
+        elif self.theme_light_rad.isChecked():
+            theme = "light"
+        else:
+            theme = "dark"
+        self.apply_theme(theme)
+
+    def _on_live_lang_changed(self):
+        lang = "en" if self.lang_en.isChecked() else "vi"
+        self._set_language_code(lang)
+
+    # Tab 4: Nâng Cấp Trang Hướng Dẫn Sử Dụng Chi Tiết
     def _build_guide_page(self) -> QWidget:
         page = QWidget()
         scroll = QScrollArea()
@@ -1038,13 +1087,14 @@ class MainWindow(QMainWindow):
         box.addWidget(title)
 
         steps = [
-            ("guide_step1_title", "guide_step1_desc", "key"),
-            ("guide_step2_title", "guide_step2_desc", "solve"),
-            ("guide_step3_title", "guide_step3_desc", "headphones"),
-            ("guide_step4_title", "guide_step4_desc", "camera"),
+            ("1. Nhập API Key Google Gemini (Miễn Phí)", "Vào Cài đặt -> Dán API Key lấy từ Google AI Studio (aistudio.google.com). Bấm 'Kiểm tra kết nối API Key' để xác nhận AI đã hoạt động.", "key"),
+            ("2. Chụp & Giải Bài Thường Siêu Tốc (Phím F2)", "Bấm nút [Giải bài] hoặc nhấn phím F2. SolveX tự động ẩn đi, cho phép bạn kéo chọn vùng câu hỏi trên màn hình và nhận lời giải chi tiết từng bước.", "solve"),
+            ("3. Giải Bài Nghe Tiếng Anh (Phím F3)", "Nhấn F3 để vừa chụp hình câu hỏi vừa thu âm đoạn hội thoại tiếng Anh. Bấm F3 lần nữa để kết thúc thu âm và nhận lời giải chính xác.", "headphones"),
+            ("4. Chọn Chế Độ Học Tập Tối Ưu (Study Modes)", "Chọn từ bộ thả xuống [Chế độ giải bài] trên giao diện chính hoặc thanh Top Bar nổi: Giải chi tiết từng bước, Trắc nghiệm siêu tốc, Tạo bài tập tương tự, hoặc Giải thích lý thuyết.", "camera"),
+            ("5. Xuất Lịch Sử Giải Bài Ra File Markdown (.md)", "Vào tab Lịch sử trò chuyện -> Bấm nút [Xuất File Markdown] để lưu toàn bộ danh sách câu hỏi và lời giải chi tiết ra file dạng .md hoặc .txt tiện cho việc in ấn.", "guide"),
         ]
 
-        for t_key, d_key, icon_name in steps:
+        for st_title, st_desc, icon_name in steps:
             card = QFrame()
             card.setObjectName("Card")
             c_box = QHBoxLayout(card)
@@ -1052,13 +1102,13 @@ class MainWindow(QMainWindow):
             ic_lbl.setPixmap(IconFactory.draw_icon(icon_name, style.AMBER, 32).pixmap(32, 32))
             c_box.addWidget(ic_lbl)
             text_box = QVBoxLayout()
-            st_title = QLabel(i18n.t(t_key))
-            st_title.setStyleSheet("font-size:15px; font-weight:bold; background:transparent;")
-            st_desc = QLabel(i18n.t(d_key))
-            st_desc.setWordWrap(True)
-            st_desc.setStyleSheet("background:transparent;")
-            text_box.addWidget(st_title)
-            text_box.addWidget(st_desc)
+            lbl_t = QLabel(st_title)
+            lbl_t.setStyleSheet("font-size:15px; font-weight:bold; background:transparent;")
+            lbl_d = QLabel(st_desc)
+            lbl_d.setWordWrap(True)
+            lbl_d.setStyleSheet("background:transparent;")
+            text_box.addWidget(lbl_t)
+            text_box.addWidget(lbl_d)
             c_box.addLayout(text_box, 1)
             box.addWidget(card)
 
@@ -1123,7 +1173,9 @@ class MainWindow(QMainWindow):
         self.prompt_listen_edit.setPlainText(self.config.get("prompt_listening", ""))
 
         theme = self.config.get("theme", "dark")
-        if theme == "light":
+        if theme == "auto":
+            self.theme_auto_rad.setChecked(True)
+        elif theme == "light":
             self.theme_light_rad.setChecked(True)
         else:
             self.theme_dark_rad.setChecked(True)
@@ -1167,7 +1219,12 @@ class MainWindow(QMainWindow):
         self._render_chat()
 
     def on_save_settings(self):
-        theme = "light" if self.theme_light_rad.isChecked() else "dark"
+        if self.theme_auto_rad.isChecked():
+            theme = "auto"
+        elif self.theme_light_rad.isChecked():
+            theme = "light"
+        else:
+            theme = "dark"
         self.apply_theme(theme)
 
         lang = "en" if self.lang_en.isChecked() else "vi"
@@ -1211,7 +1268,7 @@ class MainWindow(QMainWindow):
         self.test_api_btn.setEnabled(True)
         self._error("Lỗi API Key", i18n.t("st_test_failed") + err)
 
-    # ------------------ Kiểm Tra Cập Nhật Thủ Công (Không Auto Build) ------------------
+    # ------------------ Kiểm Tra Cập Nhật Thủ Công ------------------
     def on_check_update(self):
         self.status.showMessage("Đang kiểm tra phiên bản mới trên GitHub (hbminh2508-design/SolveX)...")
         self.update_worker = CheckUpdateWorker()

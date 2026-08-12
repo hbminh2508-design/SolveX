@@ -129,7 +129,6 @@ class CheckUpdateWorker(QThread):
             r_num, r_build = self._parse_version_components(remote)
             c_num, c_build = self._parse_version_components(current)
 
-            # Cân bằng độ dài tuple số
             max_len = max(len(r_num), len(c_num))
             r_padded = r_num + (0,) * (max_len - len(r_num))
             c_padded = c_num + (0,) * (max_len - len(c_num))
@@ -155,6 +154,14 @@ class BuildExeWorker(QThread):
         super().__init__(parent)
         self.project_dir = project_dir
 
+    def _kill_running_solvex_processes(self):
+        """Tự động đóng tiến trình SolveX.exe cũ đang chạy để phục vụ build file mới."""
+        try:
+            if sys.platform == "win32":
+                subprocess.run(["taskkill", "/F", "/IM", "SolveX.exe"], capture_output=True, text=True)
+        except Exception:
+            pass
+
     def _find_real_project_dir() -> str:
         candidates = [
             os.getcwd(),
@@ -171,8 +178,9 @@ class BuildExeWorker(QThread):
     def run(self):
         try:
             real_dir = BuildExeWorker._find_real_project_dir()
-            self.progress.emit(f"Xác định thư mục dự án: {real_dir}")
-            
+            self.progress.emit("Đang tự động dừng tiến trình SolveX cũ để giải phóng file...")
+            self._kill_running_solvex_processes()
+
             spec_file = os.path.join(real_dir, "solvex.spec")
             if not os.path.exists(spec_file):
                 self.failed.emit(f"Không tìm thấy file {spec_file} trong thư mục dự án!")
