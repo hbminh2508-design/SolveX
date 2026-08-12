@@ -1,11 +1,11 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.7.97fd046"
+APP_VERSION = "1.8.7.70b0bf5"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.8.7.97fd046",
+        "1.8.7.70b0bf5",
         "2026-08-13",
         [
             "Tích hợp bộ chuyển đổi LaTeX Math sang Native HTML Renderer (render_latex_math): Tự động phát hiện và dịch công thức LaTeX toán/lý trong $...$ và $$...$$.",
