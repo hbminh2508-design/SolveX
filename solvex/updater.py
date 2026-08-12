@@ -1,6 +1,6 @@
-"""Hệ thống kiểm tra cập nhật online từ GitHub Repository chính thức:
+"""Hệ thống kiểm tra cập nhật online & Tải bản mới trực tiếp cho SolveX từ GitHub Repository:
 https://github.com/hbminh2508-design/SolveX.git
-Hỗ trợ kiểm tra theo định dạng phiên bản X.y.z.t... (Số phiên bản + Mã build commit).
+Hỗ trợ hiển thị % tiến độ, tốc độ tải và thời gian còn lại (ETA).
 """
 
 import json
@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import urllib.request
 from pathlib import Path
 
@@ -32,7 +33,7 @@ class CheckUpdateWorker(QThread):
 
     def run(self):
         remote_ver = None
-        changelog = "Có phiên bản mới trên GitHub! Vui lòng truy cập repository để tải về phiên bản mới nhất."
+        changelog = "Có phiên bản mới trên GitHub! Vui lòng tải về phiên bản mới nhất."
         download_url = f"https://github.com/{TARGET_GITHUB_REPO}"
 
         # 1. Tải raw file version.py từ GitHub main branch
@@ -112,7 +113,6 @@ class CheckUpdateWorker(QThread):
         self.up_to_date.emit(APP_VERSION)
 
     def _parse_version_components(self, ver_str: str):
-        """Tách chuỗi X.y.z.t thành (thành_phần_số, mã_build)."""
         clean_str = ver_str.lstrip("v").strip()
         parts = clean_str.split(".")
         numbers = []
@@ -143,6 +143,97 @@ class CheckUpdateWorker(QThread):
             return False
 
 
+class DownloadUpdateWorker(QThread):
+    """Worker tải file bản mới về máy tính với tiến độ %, tốc độ và thời gian còn lại (ETA)."""
+
+    progress_signal = pyqtSignal(float, str, str, int, int)  # (percent, speed_str, eta_str, downloaded, total)
+    download_finished = pyqtSignal(str)  # (saved_file_path)
+    failed = pyqtSignal(str)
+
+    def __init__(self, download_url: str, save_filename: str = "SolveX_Update.exe"):
+        super().__init__()
+        self.download_url = download_url
+        self.save_filename = save_filename
+        self._is_cancelled = False
+
+    def cancel(self):
+        self._is_cancelled = True
+
+    def run(self):
+        try:
+            target_dir = Path.home() / "Downloads"
+            target_dir.mkdir(parents=True, exist_ok=True)
+            save_path = target_dir / self.save_filename
+
+            # 1. Tìm đường dẫn file .exe từ GitHub Releases nếu có
+            url = self.download_url
+            if "github.com" in url and not url.endswith(".exe"):
+                # Thử tìm direct download url từ GitHub release asset
+                url = f"https://github.com/{TARGET_GITHUB_REPO}/releases/latest/download/SolveX.exe"
+
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "SolveX-App-Updater"},
+            )
+
+            try:
+                resp = urllib.request.urlopen(req, timeout=15)
+            except Exception:
+                # Fallback url
+                url = f"https://raw.githubusercontent.com/{TARGET_GITHUB_REPO}/main/dist/SolveX.exe"
+                req = urllib.request.Request(url, headers={"User-Agent": "SolveX-App-Updater"})
+                resp = urllib.request.urlopen(req, timeout=15)
+
+            total_size = int(resp.headers.get("content-length", 0))
+            downloaded = 0
+            block_size = 64 * 1024  # 64 KB chunk
+
+            start_time = time.time()
+            last_time = start_time
+            last_downloaded = 0
+
+            with open(save_path, "wb") as f:
+                while True:
+                    if self._is_cancelled:
+                        resp.close()
+                        self.failed.emit("Đã hủy tiến trình tải cập nhật.")
+                        return
+
+                    chunk = resp.read(block_size)
+                    if not chunk:
+                        break
+
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    curr_time = time.time()
+                    elapsed = curr_time - start_time
+                    interval = curr_time - last_time
+
+                    if interval >= 0.3 or downloaded == total_size:
+                        speed = (downloaded - last_downloaded) / interval if interval > 0 else 0
+                        speed_mb = speed / (1024 * 1024)
+                        speed_str = f"{speed_mb:.2f} MB/s" if speed_mb >= 1.0 else f"{speed / 1024:.0f} KB/s"
+
+                        if total_size > 0:
+                            percent = (downloaded / total_size) * 100.0
+                            remaining_bytes = total_size - downloaded
+                            eta_sec = remaining_bytes / speed if speed > 0 else 0
+                            m, s = divmod(int(eta_sec), 60)
+                            eta_str = f"{m:02d}:{s:02d}"
+                        else:
+                            percent = 50.0
+                            eta_str = "Đang tính toán..."
+
+                        self.progress_signal.emit(percent, speed_str, eta_str, downloaded, total_size)
+                        last_time = curr_time
+                        last_downloaded = downloaded
+
+            resp.close()
+            self.download_finished.emit(str(save_path))
+        except Exception as exc:
+            self.failed.emit(f"Lỗi khi tải file cập nhật: {exc}")
+
+
 class BuildExeWorker(QThread):
     """Worker tự động build file .exe bằng PyInstaller ở background thread."""
 
@@ -155,7 +246,6 @@ class BuildExeWorker(QThread):
         self.project_dir = project_dir
 
     def _kill_running_solvex_processes(self):
-        """Tự động đóng tiến trình SolveX.exe cũ đang chạy để phục vụ build file mới."""
         try:
             if sys.platform == "win32":
                 subprocess.run(["taskkill", "/F", "/IM", "SolveX.exe"], capture_output=True, text=True)

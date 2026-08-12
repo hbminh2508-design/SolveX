@@ -1,9 +1,10 @@
-"""Giao diện SolveX v1.7.2 — WinUI 3 Modern Friendly UI, App Logo Tray Icon,
-Manual Version Update Flow, Mode Combo on Floating Top Bar, Live Settings Sync & Auto OS Theme.
+"""Giao diện SolveX v1.7.3 — WinUI 3 Modern Friendly UI, App Logo Tray Icon,
+In-App Direct Update Downloader (Tiến độ %, tốc độ, ETA) & Auto Install Prompt.
 """
 
 import html as html_lib
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -46,7 +47,7 @@ from .gemini import GeminiClient, audio_part, image_part, text_part
 from .history import HistoryManager
 from .i18n import i18n
 from .icons import IconFactory
-from .updater import BuildExeWorker, CheckUpdateWorker
+from .updater import BuildExeWorker, CheckUpdateWorker, DownloadUpdateWorker
 from .version import APP_VERSION, changelog_markdown
 from .workers import AskWorker, CaptureWorker, RecordWorker, TestApiWorker
 
@@ -100,6 +101,63 @@ def _draw_fallback_icon() -> QIcon:
     painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, "S")
     painter.end()
     return QIcon(pixmap)
+
+
+# --------------------------------------------------------------------------
+# Update Progress Dialog (Hiển thị % tiến độ, Tốc độ MB/s, Thời gian ETA)
+# --------------------------------------------------------------------------
+class UpdateProgressDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Tải Bản Cập Nhật SolveX")
+        self.setWindowIcon(build_app_icon())
+        self.setFixedSize(450, 180)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(10)
+
+        self.title_label = QLabel("Đang tải xuống phiên bản mới nhất...")
+        self.title_label.setStyleSheet("font-size:14px; font-weight:bold; color:" + style.AMBER + ";")
+        layout.addWidget(self.title_label)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setFixedHeight(18)
+        layout.addWidget(self.progress_bar)
+
+        info_row = QHBoxLayout()
+        self.speed_label = QLabel("Tốc độ: 0 KB/s")
+        self.speed_label.setStyleSheet("color:" + style.MUTED + ";")
+        self.eta_label = QLabel("Thời gian còn lại: --:--")
+        self.eta_label.setStyleSheet("color:" + style.MUTED + ";")
+        info_row.addWidget(self.speed_label)
+        info_row.addStretch(1)
+        info_row.addWidget(self.eta_label)
+        layout.addLayout(info_row)
+
+        self.detail_label = QLabel("0 MB / 0 MB (0%)")
+        self.detail_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.detail_label)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch(1)
+        self.cancel_btn = QPushButton("Hủy tải")
+        btn_row.addWidget(self.cancel_btn)
+        layout.addLayout(btn_row)
+
+    def update_progress(self, percent: float, speed_str: str, eta_str: str, downloaded: int, total: int):
+        self.progress_bar.setValue(int(percent))
+        self.speed_label.setText(f"Tốc độ: {speed_str}")
+        self.eta_label.setText(f"Thời gian còn lại: {eta_str}")
+        down_mb = downloaded / (1024 * 1024)
+        total_mb = total / (1024 * 1024)
+        if total > 0:
+            self.detail_label.setText(f"{down_mb:.1f} MB / {total_mb:.1f} MB ({int(percent)}%)")
+        else:
+            self.detail_label.setText(f"{down_mb:.1f} MB đã tải")
 
 
 # --------------------------------------------------------------------------
@@ -459,7 +517,7 @@ class BusyIndicator(QWidget):
 
 
 # --------------------------------------------------------------------------
-# Cửa sổ chính MainWindow (WinUI 3 Modern Friendly v1.7.2)
+# Cửa sổ chính MainWindow (WinUI 3 Modern Friendly v1.7.3)
 # --------------------------------------------------------------------------
 class MainWindow(QMainWindow):
     SYSTEM_INSTRUCTION = (
@@ -482,6 +540,7 @@ class MainWindow(QMainWindow):
         self.record_worker = None
         self.test_worker = None
         self.update_worker = None
+        self.download_worker = None
         self.build_worker = None
         self.pending_shot = None
         self.record_seconds = 0
@@ -666,7 +725,7 @@ class MainWindow(QMainWindow):
         self._shutdown()
         QApplication.instance().quit()
 
-    # ------------------ Xây dựng WinUI 3 UI v1.7.2 ------------------
+    # ------------------ Xây dựng WinUI 3 UI v1.7.3 ------------------
     def _build_ui(self):
         root = QWidget()
         self.setCentralWidget(root)
@@ -894,7 +953,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(splitter, 1)
         return page
 
-    # Tab 3: Settings Page (Live Settings Sync & Auto OS Theme)
+    # Tab 3: Settings Page
     def _build_settings_page(self) -> QWidget:
         page = QWidget()
         scroll = QScrollArea()
@@ -1071,7 +1130,7 @@ class MainWindow(QMainWindow):
         lang = "en" if self.lang_en.isChecked() else "vi"
         self._set_language_code(lang)
 
-    # Tab 4: Nâng Cấp Trang Hướng Dẫn Sử Dụng Chi Tiết
+    # Tab 4: Guide Page
     def _build_guide_page(self) -> QWidget:
         page = QWidget()
         scroll = QScrollArea()
@@ -1268,7 +1327,7 @@ class MainWindow(QMainWindow):
         self.test_api_btn.setEnabled(True)
         self._error("Lỗi API Key", i18n.t("st_test_failed") + err)
 
-    # ------------------ Kiểm Tra Cập Nhật Thủ Công ------------------
+    # ------------------ Kiểm Tra & Tải Cập Nhật Trực Tiếp Trong App ------------------
     def on_check_update(self):
         self.status.showMessage("Đang kiểm tra phiên bản mới trên GitHub (hbminh2508-design/SolveX)...")
         self.update_worker = CheckUpdateWorker()
@@ -1282,9 +1341,60 @@ class MainWindow(QMainWindow):
         self.status.showMessage(msg, 5000)
 
     def _on_update_available(self, ver: str, changelog: str, url: str):
-        msg = f"Đã có phiên bản mới v{ver} trên GitHub!\n\nGitHub Repo:\n{url}\n\nNhật ký cập nhật:\n{changelog}\n\nBạn có thể tự kiểm tra mã nguồn hoặc tải bản mới từ GitHub."
-        QMessageBox.information(self, "SolveX Update Available", msg)
-        self.status.showMessage(f"Đã có phiên bản mới v{ver} trên GitHub!", 6000)
+        reply = QMessageBox.question(
+            self,
+            "SolveX — Có Phiên Bản Mới!",
+            f"Đã có phiên bản mới SolveX v{ver} trên GitHub!\n\n"
+            f"Nhật ký cập nhật:\n{changelog}\n\n"
+            f"Bạn có muốn tải bản mới về máy ngay bây giờ không?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self._start_direct_download(ver, url)
+
+    def _start_direct_download(self, ver: str, url: str):
+        self.progress_dlg = UpdateProgressDialog(self)
+        self.download_worker = DownloadUpdateWorker(url, f"SolveX_v{ver}.exe")
+
+        self.progress_dlg.cancel_btn.clicked.connect(self._cancel_download)
+        self.download_worker.progress_signal.connect(self.progress_dlg.update_progress)
+        self.download_worker.download_finished.connect(self._on_download_finished)
+        self.download_worker.failed.connect(self._on_download_failed)
+
+        self.download_worker.start()
+        self.progress_dlg.exec()
+
+    def _cancel_download(self):
+        if self.download_worker:
+            self.download_worker.cancel()
+        if hasattr(self, "progress_dlg"):
+            self.progress_dlg.close()
+
+    def _on_download_failed(self, err: str):
+        if hasattr(self, "progress_dlg"):
+            self.progress_dlg.close()
+        self._error("Lỗi Tải Cập Nhật", err)
+
+    def _on_download_finished(self, saved_file_path: str):
+        if hasattr(self, "progress_dlg"):
+            self.progress_dlg.close()
+
+        reply = QMessageBox.question(
+            self,
+            "Tải Hoàn Tất — SolveX",
+            f"Đã tải thành công file cài đặt mới tại:\n{saved_file_path}\n\n"
+            f"Bạn có muốn khởi chạy và cài đặt phiên bản mới ngay bây giờ không?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                if sys.platform == "win32":
+                    os.startfile(saved_file_path)
+                else:
+                    subprocess.Popen([saved_file_path])
+                self.quit_app()
+            except Exception as exc:
+                self._error("Khởi Chạy Lỗi", f"Không thể tự động mở file cài đặt: {exc}")
 
     def on_build_exe(self):
         project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

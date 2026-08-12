@@ -1,9 +1,19 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.7.2.3660273"
+APP_VERSION = "1.7.3.1a8d047"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.7.3.1a8d047",
+        "2026-08-12",
+        [
+            "Bổ sung hệ thống Tải Bản Cập Nhật Trực Tiếp Trong Ứng Dụng (In-App Direct Update Downloader).",
+            "Hiển thị tiến độ tải về thời gian thực: % phần trăm (0% -> 100%), dung lượng đã tải, tốc độ (MB/s) và thời gian còn lại (ETA).",
+            "Hộp thoại hỏi cài đặt tự động khi tải hoàn tất: Khởi chạy file .exe mới và tự đóng ứng dụng cũ mượt mà.",
+            "Tối ưu hóa hiệu năng tải file bằng tiến trình luồng ẩn bất đồng bộ.",
+        ],
+    ),
     (
         "1.7.2.3660273",
         "2026-08-12",
