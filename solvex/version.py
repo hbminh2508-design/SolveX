@@ -1,11 +1,11 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.2.146b9a8"
+APP_VERSION = "1.8.2.248963c"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.8.2.146b9a8",
+        "1.8.2.248963c",
         "2026-08-13",
         [
             "Thêm 2 tuỳ chọn Cài đặt linh hoạt cho tính năng đọc đáp án giọng nói (TTS Reader):",
