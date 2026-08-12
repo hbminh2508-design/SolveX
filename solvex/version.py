@@ -1,11 +1,11 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.0.260ec6c"
+APP_VERSION = "1.8.0.2e29047"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.8.0.260ec6c",
+        "1.8.0.2e29047",
         "2026-08-12",
         [
             "Tái thiết kế Icon Cài Đặt (bánh răng WinUI 3) 6 răng tỉ lệ chuẩn xa xỉ, đường nét thanh lịch và tinh tế.",
