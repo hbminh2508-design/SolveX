@@ -48,6 +48,8 @@ DEFAULTS = {
     "language": "vi",                # "vi" hoặc "en"
     "startup_mode": "compact",       # "full", "compact", hoặc "tray"
     "theme": "dark",                 # "dark" hoặc "light"
+    "enable_tts": True,              # Cho phép tính năng đọc đáp án bằng giọng nói
+    "auto_tts": False,               # Tự động phát âm thanh đọc đáp án khi AI giải xong
 }
 
 

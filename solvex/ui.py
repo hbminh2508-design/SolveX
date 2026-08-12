@@ -486,9 +486,10 @@ class AnswerWindow(QDialog):
 
         QTimer.singleShot(4000, lambda: (self.speak_btn.setEnabled(True), self.speak_btn.setText("🔊 Đọc Lời Giải (TTS)")))
 
-    def show_answer(self, markdown_text: str, theme: str = "dark"):
+    def show_answer(self, markdown_text: str, theme: str = "dark", enable_tts: bool = True):
         self.raw_markdown = markdown_text
         self.setStyleSheet(style.get_stylesheet(theme))
+        self.speak_btn.setVisible(enable_tts)
         self.browser.setHtml(f"<style>{style.get_chat_css(theme)}</style>{render_markdown(markdown_text)}")
         self.show()
         self.raise_()
@@ -1051,6 +1052,12 @@ class MainWindow(QMainWindow):
         self.start_combo.addItem(i18n.t("st_startup_tray"), "tray")
         g_layout.addWidget(self.start_combo)
 
+        g_layout.addSpacing(10)
+        self.enable_tts_check = QCheckBox("🔊 Bật nút đọc đáp án bằng giọng nói (TTS Reader)")
+        self.auto_tts_check = QCheckBox("⚡ Tự động đọc đáp án ngay khi AI hoàn tất lời giải")
+        g_layout.addWidget(self.enable_tts_check)
+        g_layout.addWidget(self.auto_tts_check)
+
         box.addWidget(gen_card)
 
         box.addWidget(self._section_lbl("st_section_api"))
@@ -1283,6 +1290,9 @@ class MainWindow(QMainWindow):
         if idx >= 0:
             self.start_combo.setCurrentIndex(idx)
 
+        self.enable_tts_check.setChecked(bool(self.config.get("enable_tts", True)))
+        self.auto_tts_check.setChecked(bool(self.config.get("auto_tts", False)))
+
     def _on_source_changed(self):
         if self.monitor_combo.currentData() == -1:
             self.config.set("capture_mode", "region")
@@ -1323,6 +1333,9 @@ class MainWindow(QMainWindow):
         i18n.set_language(lang)
         self.config.set("language", lang)
         self.config.set("startup_mode", self.start_combo.currentData())
+
+        self.config.set("enable_tts", self.enable_tts_check.isChecked())
+        self.config.set("auto_tts", self.auto_tts_check.isChecked())
 
         self.config.set("api_key", self.key_input.text().strip())
         self.config.set("model", self.model_input.text().strip())
@@ -1709,7 +1722,10 @@ class MainWindow(QMainWindow):
     def _popup_answer(self, text: str):
         if self.answer_window is None:
             self.answer_window = AnswerWindow()
-        self.answer_window.show_answer(text, self.config.get("theme", "dark"))
+        enable_tts = bool(self.config.get("enable_tts", True))
+        self.answer_window.show_answer(text, self.config.get("theme", "dark"), enable_tts)
+        if enable_tts and self.config.get("auto_tts", False):
+            QTimer.singleShot(500, self.answer_window._speak_answer)
 
     # ------------------ Hiển thị Chat ------------------
     def _render_chat(self):

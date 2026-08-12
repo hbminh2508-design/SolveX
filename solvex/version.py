@@ -1,11 +1,21 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.1.f8084dc"
+APP_VERSION = "1.8.2.146b9a8"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.8.1.f8084dc",
+        "1.8.2.146b9a8",
+        "2026-08-13",
+        [
+            "Thêm 2 tuỳ chọn Cài đặt linh hoạt cho tính năng đọc đáp án giọng nói (TTS Reader):",
+            "1. Checkbox [🔊 Bật/Tắt nút đọc đáp án giọng nói trong cửa sổ lời giải].",
+            "2. Checkbox [⚡ Tự động đọc đáp án ngay khi AI giải xong].",
+            "Cập nhật danh sách gợi ý tính năng đột phá đề xuất cho phiên bản v1.9 tiếp theo.",
+        ],
+    ),
+    (
+        "1.8.1.f3014a4",
         "2026-08-12",
         [
             "Khắc phục triệt để lỗi HTTP Error 404 khi tải file cập nhật bằng cơ chế thông minh nhận diện GitHub Release Assets.",
