@@ -1,6 +1,6 @@
 """Hệ thống kiểm tra cập nhật online từ GitHub Repository chính thức:
 https://github.com/hbminh2508-design/SolveX.git
-và tự động build file .exe bằng PyInstaller.
+Hỗ trợ kiểm tra theo định dạng phiên bản X.y.z.t... (Số phiên bản + Mã build commit).
 """
 
 import json
@@ -20,6 +20,7 @@ TARGET_GITHUB_REPO = "hbminh2508-design/SolveX"
 RAW_VERSION_URL = f"https://raw.githubusercontent.com/{TARGET_GITHUB_REPO}/main/solvex/version.py"
 GITHUB_API_RELEASE = f"https://api.github.com/repos/{TARGET_GITHUB_REPO}/releases/latest"
 GITHUB_API_COMMITS = f"https://api.github.com/repos/{TARGET_GITHUB_REPO}/commits/main"
+GITHUB_API_TAGS = f"https://api.github.com/repos/{TARGET_GITHUB_REPO}/tags"
 
 
 class CheckUpdateWorker(QThread):
@@ -31,7 +32,7 @@ class CheckUpdateWorker(QThread):
 
     def run(self):
         remote_ver = None
-        changelog = "Có phiên bản mới v1.7 trên GitHub: Đồng bộ App Logo Khay Hệ Thống, Giao diện WinUI 3 Modern & Friendly mượt mà!"
+        changelog = "Có phiên bản mới trên GitHub! Vui lòng truy cập repository để tải về phiên bản mới nhất."
         download_url = f"https://github.com/{TARGET_GITHUB_REPO}"
 
         # 1. Tải raw file version.py từ GitHub main branch
@@ -49,7 +50,24 @@ class CheckUpdateWorker(QThread):
         except Exception:
             pass
 
-        # 2. Thử kiểm tra qua Releases API nếu có
+        # 2. Thử kiểm tra qua Tags API
+        if not remote_ver:
+            try:
+                req = urllib.request.Request(
+                    GITHUB_API_TAGS,
+                    headers={"User-Agent": "SolveX-App-Updater"},
+                )
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    if resp.status == 200:
+                        tags_data = json.loads(resp.read().decode("utf-8"))
+                        if tags_data and isinstance(tags_data, list):
+                            tag_name = tags_data[0].get("name", "").lstrip("v")
+                            commit_sha = tags_data[0].get("commit", {}).get("sha", "")[:7]
+                            remote_ver = f"{tag_name}.{commit_sha}" if commit_sha else tag_name
+            except Exception:
+                pass
+
+        # 3. Thử kiểm tra qua Releases API nếu chưa lấy được
         if not remote_ver:
             try:
                 req = urllib.request.Request(
@@ -67,7 +85,7 @@ class CheckUpdateWorker(QThread):
             except Exception:
                 pass
 
-        # 3. So sánh phiên bản remote và local
+        # 4. So sánh phiên bản remote và local
         if remote_ver:
             if self._is_newer(remote_ver, APP_VERSION):
                 self.update_available.emit(remote_ver, changelog, download_url)
@@ -76,7 +94,7 @@ class CheckUpdateWorker(QThread):
                 self.up_to_date.emit(APP_VERSION)
                 return
 
-        # 4. Fallback check qua Commits API
+        # 5. Fallback check qua Commits API
         try:
             req = urllib.request.Request(
                 GITHUB_API_COMMITS,
@@ -93,11 +111,35 @@ class CheckUpdateWorker(QThread):
 
         self.up_to_date.emit(APP_VERSION)
 
+    def _parse_version_components(self, ver_str: str):
+        """Tách chuỗi X.y.z.t thành (thành_phần_số, mã_build)."""
+        clean_str = ver_str.lstrip("v").strip()
+        parts = clean_str.split(".")
+        numbers = []
+        build_code = ""
+        for p in parts:
+            if p.isdigit():
+                numbers.append(int(p))
+            else:
+                build_code = p
+        return tuple(numbers), build_code
+
     def _is_newer(self, remote: str, current: str) -> bool:
         try:
-            r_parts = [int(x) for x in remote.split(".")]
-            c_parts = [int(x) for x in current.split(".")]
-            return r_parts > c_parts
+            r_num, r_build = self._parse_version_components(remote)
+            c_num, c_build = self._parse_version_components(current)
+
+            # Cân bằng độ dài tuple số
+            max_len = max(len(r_num), len(c_num))
+            r_padded = r_num + (0,) * (max_len - len(r_num))
+            c_padded = c_num + (0,) * (max_len - len(c_num))
+
+            if r_padded > c_padded:
+                return True
+            elif r_padded == c_padded:
+                if r_build and c_build and r_build != c_build:
+                    return True
+            return False
         except Exception:
             return False
 

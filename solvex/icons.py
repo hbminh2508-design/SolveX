@@ -119,14 +119,17 @@ class IconFactory:
             painter.drawPath(path)
 
         elif name in ("changelog", "spark"):
+            # Icon Dấu Chấm Than (!) Thông Tin cho nút "Có gì mới"
             cx, cy = rect.center().x(), rect.center().y()
-            r = rect.width() * 0.4
+            r = rect.width() * 0.44
             path = QPainterPath()
             path.addEllipse(QPointF(cx, cy), r, r)
-            path.moveTo(cx, cy - r * 0.6)
-            path.lineTo(cx, cy + r * 0.6)
-            path.moveTo(cx - r * 0.6, cy)
-            path.lineTo(cx + r * 0.6, cy)
+            # Thân dấu chấm than
+            path.moveTo(cx, cy - r * 0.48)
+            path.lineTo(cx, cy + r * 0.1)
+            # Dấu chấm ở dưới
+            path.moveTo(cx, cy + r * 0.42)
+            path.lineTo(cx, cy + r * 0.52)
             painter.drawPath(path)
 
         elif name == "globe":
@@ -138,13 +141,11 @@ class IconFactory:
             painter.drawEllipse(QPointF(cx, cy), r * 0.45, r)
 
         elif name == "moon":
-            # Icon mặt trăng lưỡi liềm (Dark Mode) vẽ lại chuẩn mượt
+            # Icon mặt trăng lưỡi liềm (Dark Mode)
             path = QPainterPath()
             cx, cy = rect.center().x(), rect.center().y()
             r = rect.width() * 0.42
             path.addEllipse(QPointF(cx, cy), r, r)
-            
-            # Cắt lề hình tròn phụ để tạo hình trăng khuyết mềm mại
             cut_path = QPainterPath()
             cut_path.addEllipse(QPointF(cx + r * 0.42, cy - r * 0.2), r * 0.88, r * 0.88)
             moon_path = path.subtracted(cut_path)
@@ -215,23 +216,17 @@ class IconFactory:
             painter.drawPath(path)
 
         elif name == "tray":
-            # Icon thu khay hệ thống nét căng 64x64
-            x, y, w, h = rect.x(), rect.y(), rect.width(), rect.height()
+            # Icon Nút Thu Xuống Khay: Mũi Tên Hướng Xuống Dưới (↓)
+            cx, cy = rect.center().x(), rect.center().y()
+            w, h = rect.width(), rect.height()
             path = QPainterPath()
-            path.moveTo(x, y + h * 0.35)
-            path.lineTo(x, y + h)
-            path.lineTo(x + w, y + h)
-            path.lineTo(x + w, y + h * 0.35)
-            path.moveTo(x + w * 0.18, y + h * 0.35)
-            path.lineTo(x + w * 0.32, y + h * 0.62)
-            path.lineTo(x + w * 0.68, y + h * 0.62)
-            path.lineTo(x + w * 0.82, y + h * 0.35)
-            # Mũi tên thu xuống
-            path.moveTo(w * 0.5, y + 2)
-            path.lineTo(w * 0.5, y + h * 0.48)
-            path.lineTo(w * 0.38, y + h * 0.36)
-            path.moveTo(w * 0.5, y + h * 0.48)
-            path.lineTo(w * 0.62, y + h * 0.36)
+            # Thân mũi tên thẳng đứng
+            path.moveTo(cx, rect.y() + h * 0.12)
+            path.lineTo(cx, rect.y() + h * 0.82)
+            # Đầu mũi tên chĩa xuống dưới (↓)
+            path.moveTo(cx - w * 0.3, rect.y() + h * 0.52)
+            path.lineTo(cx, rect.y() + h * 0.82)
+            path.lineTo(cx + w * 0.3, rect.y() + h * 0.52)
             painter.drawPath(path)
 
         elif name == "minimize":
