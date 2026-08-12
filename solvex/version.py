@@ -1,11 +1,11 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.3.593710a"
+APP_VERSION = "1.8.3.1cc391c"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.8.3.593710a",
+        "1.8.3.1cc391c",
         "2026-08-13",
         [
             "Tách tiến trình Build .exe tự động sang cửa sổ ứng dụng độc lập (solvex/builder.py), đảm bảo khi tắt SolveX chính thì việc Build file .exe vẫn tiếp diễn 100%.",
