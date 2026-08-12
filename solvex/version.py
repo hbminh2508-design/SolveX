@@ -1,11 +1,11 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.7.3.1a8d047"
+APP_VERSION = "1.7.3.7c70908"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.7.3.1a8d047",
+        "1.7.3.7c70908",
         "2026-08-12",
         [
             "Bổ sung hệ thống Tải Bản Cập Nhật Trực Tiếp Trong Ứng Dụng (In-App Direct Update Downloader).",
