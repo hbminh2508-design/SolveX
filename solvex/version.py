@@ -1,11 +1,11 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.8.70b0bf5"
+APP_VERSION = "1.8.8.3942af3"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.8.8.70b0bf5",
+        "1.8.8.3942af3",
         "2026-08-13",
         [
             "Khắc phục triệt để lỗi kiểm tra cập nhật bị chậm/lệch phiên bản do bộ nhớ đệm CDN Fastly (raw.githubusercontent.com caching).",
