@@ -1,14 +1,14 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.7.1.cf33c28"
+APP_VERSION = "1.7.1.b599aee"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.7.1.cf33c28",
+        "1.7.1.b599aee",
         "2026-08-12",
         [
-            "Nâng cấp cấu trúc phiên bản & kiểm tra cập nhật online theo định dạng 'X.y.z.mã_build' (1.7.1.cf33c28).",
+            "Nâng cấp cấu trúc phiên bản & kiểm tra cập nhật online theo định dạng 'X.y.z.mã_build' (1.7.1.b599aee).",
             "Tự động so sánh số phiên bản chính (1.7.1) kết hợp mã Build Commit và Git Tag khi kiểm tra cập nhật online.",
             "Tái thiết kế Icon nút Thu Khay Hệ Thống hiển thị dưới dạng Mũi tên chỉ xuống (↓) tối giản chuẩn WinUI 3.",
             "Tái thiết kế Icon nút 'Có gì mới' hiển thị dưới dạng Dấu chấm than (!).",
