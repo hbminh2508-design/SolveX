@@ -1,11 +1,20 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.7.70b0bf5"
+APP_VERSION = "1.8.8.70b0bf5"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.8.7.70b0bf5",
+        "1.8.8.70b0bf5",
+        "2026-08-13",
+        [
+            "Khắc phục triệt để lỗi kiểm tra cập nhật bị chậm/lệch phiên bản do bộ nhớ đệm CDN Fastly (raw.githubusercontent.com caching).",
+            "Ưu tiên tra cứu trực tiếp GitHub Tags API kèm tham số chống cache (Cache-Busting Timestamp & Headers: no-cache, no-store).",
+            "Đảm bảo khi phát hành bản mới trên GitHub (như v1.8.7, v1.8.8), ứng dụng sẽ nhận diện ngay lập tức 100%.",
+        ],
+    ),
+    (
+        "1.8.7.97fd046",
         "2026-08-13",
         [
             "Tích hợp bộ chuyển đổi LaTeX Math sang Native HTML Renderer (render_latex_math): Tự động phát hiện và dịch công thức LaTeX toán/lý trong $...$ và $$...$$.",

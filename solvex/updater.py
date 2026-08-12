@@ -36,36 +36,45 @@ class CheckUpdateWorker(QThread):
         remote_ver = None
         changelog = "Có phiên bản mới trên GitHub! Vui lòng tải về phiên bản mới nhất."
         download_url = f"https://github.com/{TARGET_GITHUB_REPO}"
+        ts = int(time.time())
 
-        # 1. Tải raw file version.py từ GitHub main branch
+        # 1. Thử kiểm tra qua GitHub Tags API (lấy tag & commit SHA trực tiếp, không bị cdn cache)
         try:
             req = urllib.request.Request(
-                RAW_VERSION_URL,
-                headers={"User-Agent": "SolveX-App-Updater"},
+                f"{GITHUB_API_TAGS}?t={ts}",
+                headers={
+                    "User-Agent": "SolveX-App-Updater",
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache"
+                },
             )
             with urllib.request.urlopen(req, timeout=10) as resp:
                 if resp.status == 200:
-                    text = resp.read().decode("utf-8")
-                    match = re.search(r'APP_VERSION\s*=\s*["\']([^"\']+)["\']', text)
-                    if match:
-                        remote_ver = match.group(1)
+                    tags_data = json.loads(resp.read().decode("utf-8"))
+                    if tags_data and isinstance(tags_data, list):
+                        tag_name = tags_data[0].get("name", "").lstrip("v")
+                        commit_sha = tags_data[0].get("commit", {}).get("sha", "")[:7]
+                        remote_ver = f"{tag_name}.{commit_sha}" if commit_sha else tag_name
         except Exception:
             pass
 
-        # 2. Thử kiểm tra qua Tags API
+        # 2. Tải raw file version.py từ GitHub main branch kèm cache busting timestamp
         if not remote_ver:
             try:
                 req = urllib.request.Request(
-                    GITHUB_API_TAGS,
-                    headers={"User-Agent": "SolveX-App-Updater"},
+                    f"{RAW_VERSION_URL}?t={ts}",
+                    headers={
+                        "User-Agent": "SolveX-App-Updater",
+                        "Cache-Control": "no-cache, no-store, must-revalidate",
+                        "Pragma": "no-cache"
+                    },
                 )
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     if resp.status == 200:
-                        tags_data = json.loads(resp.read().decode("utf-8"))
-                        if tags_data and isinstance(tags_data, list):
-                            tag_name = tags_data[0].get("name", "").lstrip("v")
-                            commit_sha = tags_data[0].get("commit", {}).get("sha", "")[:7]
-                            remote_ver = f"{tag_name}.{commit_sha}" if commit_sha else tag_name
+                        text = resp.read().decode("utf-8")
+                        match = re.search(r'APP_VERSION\s*=\s*["\']([^"\']+)["\']', text)
+                        if match:
+                            remote_ver = match.group(1)
             except Exception:
                 pass
 
@@ -73,8 +82,12 @@ class CheckUpdateWorker(QThread):
         if not remote_ver:
             try:
                 req = urllib.request.Request(
-                    GITHUB_API_RELEASE,
-                    headers={"User-Agent": "SolveX-App-Updater"},
+                    f"{GITHUB_API_RELEASE}?t={ts}",
+                    headers={
+                        "User-Agent": "SolveX-App-Updater",
+                        "Cache-Control": "no-cache, no-store, must-revalidate",
+                        "Pragma": "no-cache"
+                    },
                 )
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     if resp.status == 200:
