@@ -1392,6 +1392,7 @@ class MainWindow(QMainWindow):
         self.progress_dlg.cancel_btn.clicked.connect(self._cancel_download)
         self.download_worker.progress_signal.connect(self.progress_dlg.update_progress)
         self.download_worker.download_finished.connect(self._on_download_finished)
+        self.download_worker.no_asset_found.connect(self._on_no_asset_found)
         self.download_worker.failed.connect(self._on_download_failed)
 
         self.download_worker.start()
@@ -1402,6 +1403,21 @@ class MainWindow(QMainWindow):
             self.download_worker.cancel()
         if hasattr(self, "progress_dlg"):
             self.progress_dlg.close()
+
+    def _on_no_asset_found(self, web_url: str):
+        if hasattr(self, "progress_dlg"):
+            self.progress_dlg.close()
+
+        reply = QMessageBox.question(
+            self,
+            "SolveX — GitHub Update",
+            "Phiên bản mới đã có trên GitHub! Hiện chưa có file .exe đóng gói trên Releases Assets.\n\n"
+            "Bạn có muốn mở trang GitHub Repository để xem mã nguồn mới hoặc tự động đóng gói (Build .exe) ngay trên máy không?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            import webbrowser
+            webbrowser.open(web_url)
 
     def _on_download_failed(self, err: str):
         if hasattr(self, "progress_dlg"):

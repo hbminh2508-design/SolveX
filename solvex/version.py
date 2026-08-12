@@ -1,9 +1,18 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.0.2e29047"
+APP_VERSION = "1.8.1.f3014a4"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.8.1.f3014a4",
+        "2026-08-12",
+        [
+            "Khắc phục triệt để lỗi HTTP Error 404 khi tải file cập nhật bằng cơ chế thông minh nhận diện GitHub Release Assets.",
+            "Tự động tìm kiếm file SolveX.exe đính kèm từ GitHub Releases hoặc nạp file build sẵn mượt mà không gây ngắt đoạn ứng dụng.",
+            "Bổ sung luồng hỏi ý kiến người dùng để chuyển hướng tới GitHub Repository hoặc tự động Build file .exe nếu chưa có release binary.",
+        ],
+    ),
     (
         "1.8.0.2e29047",
         "2026-08-12",

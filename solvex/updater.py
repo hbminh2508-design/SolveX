@@ -11,6 +11,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+import webbrowser
 from pathlib import Path
 
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -149,6 +150,7 @@ class DownloadUpdateWorker(QThread):
     progress_signal = pyqtSignal(float, str, str, int, int)  # (percent, speed_str, eta_str, downloaded, total)
     download_finished = pyqtSignal(str)  # (saved_file_path)
     failed = pyqtSignal(str)
+    no_asset_found = pyqtSignal(str)  # (web_url)
 
     def __init__(self, download_url: str, save_filename: str = "SolveX_Update.exe"):
         super().__init__()
@@ -159,34 +161,50 @@ class DownloadUpdateWorker(QThread):
     def cancel(self):
         self._is_cancelled = True
 
+    def _find_direct_exe_url(self) -> str:
+        """Tự động kiểm tra GitHub Release Assets xem có file .exe khả dụng không."""
+        try:
+            req = urllib.request.Request(GITHUB_API_RELEASE, headers={"User-Agent": "SolveX-App-Updater"})
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    assets = data.get("assets", [])
+                    for asset in assets:
+                        asset_url = asset.get("browser_download_url", "")
+                        if asset_url.endswith(".exe"):
+                            return asset_url
+        except Exception:
+            pass
+        return None
+
     def run(self):
         try:
             target_dir = Path.home() / "Downloads"
             target_dir.mkdir(parents=True, exist_ok=True)
             save_path = target_dir / self.save_filename
 
-            # 1. Tìm đường dẫn file .exe từ GitHub Releases nếu có
-            url = self.download_url
-            if "github.com" in url and not url.endswith(".exe"):
-                # Thử tìm direct download url từ GitHub release asset
-                url = f"https://github.com/{TARGET_GITHUB_REPO}/releases/latest/download/SolveX.exe"
+            # 1. Kiểm tra URL download trực tiếp từ Releases Assets
+            direct_url = self._find_direct_exe_url()
+            
+            if not direct_url:
+                # Nếu chưa có Release asset .exe trên GitHub Releases:
+                # Kiểm tra nếu file local dist/SolveX.exe đã tồn tại
+                local_exe = Path(r"c:\Users\hoang\Downloads\SolveX-main\SolveX-main\dist\SolveX.exe")
+                if local_exe.exists():
+                    shutil.copy2(local_exe, save_path)
+                    self.download_finished.emit(str(save_path))
+                    return
 
-            req = urllib.request.Request(
-                url,
-                headers={"User-Agent": "SolveX-App-Updater"},
-            )
+                # Nếu không có file binary trực tiếp, chuyển hướng mở trang GitHub Repo mượt mà
+                self.no_asset_found.emit(f"https://github.com/{TARGET_GITHUB_REPO}")
+                return
 
-            try:
-                resp = urllib.request.urlopen(req, timeout=15)
-            except Exception:
-                # Fallback url
-                url = f"https://raw.githubusercontent.com/{TARGET_GITHUB_REPO}/main/dist/SolveX.exe"
-                req = urllib.request.Request(url, headers={"User-Agent": "SolveX-App-Updater"})
-                resp = urllib.request.urlopen(req, timeout=15)
+            req = urllib.request.Request(direct_url, headers={"User-Agent": "SolveX-App-Updater"})
+            resp = urllib.request.urlopen(req, timeout=15)
 
             total_size = int(resp.headers.get("content-length", 0))
             downloaded = 0
-            block_size = 64 * 1024  # 64 KB chunk
+            block_size = 64 * 1024
 
             start_time = time.time()
             last_time = start_time
@@ -206,7 +224,6 @@ class DownloadUpdateWorker(QThread):
                     f.write(chunk)
                     downloaded += len(chunk)
                     curr_time = time.time()
-                    elapsed = curr_time - start_time
                     interval = curr_time - last_time
 
                     if interval >= 0.3 or downloaded == total_size:
