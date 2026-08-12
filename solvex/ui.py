@@ -1496,7 +1496,10 @@ class MainWindow(QMainWindow):
 
         try:
             if sys.platform == "win32":
-                subprocess.Popen(["cmd.exe", "/c", f"start \"SolveX Builder\" \"{sys.executable}\" \"{builder_script}\""], shell=True)
+                subprocess.Popen(
+                    [sys.executable, builder_script],
+                    creationflags=subprocess.CREATE_NEW_CONSOLE
+                )
             else:
                 subprocess.Popen([sys.executable, builder_script])
             self.status.showMessage("Đã khởi chạy tiến trình SolveX Builder độc lập!", 5000)

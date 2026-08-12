@@ -1,9 +1,17 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.3.1cc391c"
+APP_VERSION = "1.8.4.82fa019"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.8.4.82fa019",
+        "2026-08-13",
+        [
+            "Khắc phục triệt để lỗi Windows không tìm thấy file ('Windows cannot find SolveX Builder') khi mở cửa sổ Build .exe độc lập.",
+            "Sử dụng cờ khởi tạo hệ thống CREATE_NEW_CONSOLE trực tiếp từ Python Subprocess giúp mở cửa sổ console build độc lập mượt mà 100%.",
+        ],
+    ),
     (
         "1.8.3.1cc391c",
         "2026-08-13",
