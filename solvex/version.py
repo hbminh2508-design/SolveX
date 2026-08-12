@@ -1,11 +1,11 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.5.95f08eb"
+APP_VERSION = "1.8.5.abb1f7b"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.8.5.95f08eb",
+        "1.8.5.abb1f7b",
         "2026-08-13",
         [
             "Nâng cấp bộ chuyển đổi Markdown & tích hợp bộ dịch công thức toán học MathJax 3 cho tất cả các cửa sổ hiển thị (AnswerWindow, MainWindow Chat, Tab Lịch Sử).",
