@@ -1,11 +1,11 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.6.89076db"
+APP_VERSION = "1.8.6.d480d44"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.8.6.89076db",
+        "1.8.6.d480d44",
         "2026-08-13",
         [
             "Cập nhật luồng cài đặt bản mới: Khi bấm xác nhận cài đặt bản cập nhật vừa tải về, ứng dụng sẽ tự động kích hoạt kịch bản build.bat.",
