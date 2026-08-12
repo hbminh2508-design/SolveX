@@ -1,9 +1,18 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.5.abb1f7b"
+APP_VERSION = "1.8.6.89076db"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.8.6.89076db",
+        "2026-08-13",
+        [
+            "Cập nhật luồng cài đặt bản mới: Khi bấm xác nhận cài đặt bản cập nhật vừa tải về, ứng dụng sẽ tự động kích hoạt kịch bản build.bat.",
+            "Lập tức tự đóng ứng dụng SolveX hiện tại ngay khi kích hoạt build.bat để giải phóng hoàn toàn khóa file Windows, đảm bảo tiến trình đóng gói bản mới thành công 100%.",
+            "Đã khởi tạo kịch bản build.bat chuẩn tự động dừng tiến trình cũ, chạy PyInstaller đóng gói và tự mở SolveX mới.",
+        ],
+    ),
     (
         "1.8.5.abb1f7b",
         "2026-08-13",

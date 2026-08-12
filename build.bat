@@ -1,21 +1,25 @@
 @echo off
-REM ===== Build SolveX.exe (chay tren Windows) =====
-setlocal
+title SolveX Auto Update Build
+echo ======================================================
+echo           SolveX Auto Update Installer & Builder
+echo ======================================================
 
-echo [1/4] Kiem tra Python...
-python --version || (echo Chua cai Python. Tai tai python.org va nho tick "Add to PATH". & pause & exit /b 1)
+echo [+] Stopping any running SolveX.exe instance...
+taskkill /F /IM SolveX.exe 2>nul
+timeout /t 1 /nobreak >nul
 
-echo [2/4] Tao moi truong ao...
-if not exist .venv python -m venv .venv
-call .venv\Scripts\activate.bat
+echo [+] Starting PyInstaller build process...
+.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean solvex.spec
 
-echo [3/4] Cai thu vien...
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt pyinstaller
-
-echo [4/4] Dong goi...
-pyinstaller --noconfirm --clean solvex.spec
-
-echo.
-echo XONG. File nam o: dist\SolveX.exe
-pause
+if %ERRORLEVEL% EQU 0 (
+    echo ======================================================
+    echo [✓] Build Completed Successfully!
+    echo [✓] Launching new SolveX version...
+    echo ======================================================
+    start "" dist\SolveX.exe
+) else (
+    echo ======================================================
+    echo [!] Build Failed with Error Code %ERRORLEVEL%
+    echo ======================================================
+    pause
+)

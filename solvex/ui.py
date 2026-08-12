@@ -1553,18 +1553,31 @@ class MainWindow(QMainWindow):
             self,
             "Tải Hoàn Tất — SolveX",
             f"Đã tải thành công file cài đặt mới tại:\n{saved_file_path}\n\n"
-            f"Bạn có muốn khởi chạy và cài đặt phiên bản mới ngay bây giờ không?",
+            f"Khi xác nhận cài đặt, ứng dụng sẽ kích hoạt kịch bản build.bat và tự đóng SolveX ngay lập tức để tiến trình build diễn ra mượt mà.\n\n"
+            f"Bạn có muốn kích hoạt cài đặt phiên bản mới ngay bây giờ không?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         if reply == QMessageBox.StandardButton.Yes:
             try:
+                project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                build_bat = os.path.join(project_dir, "build.bat")
+                if not os.path.exists(build_bat):
+                    with open(build_bat, "w", encoding="utf-8") as f:
+                        f.write(
+                            "@echo off\ntitle SolveX Auto Update Build\n"
+                            "echo Stopping old SolveX...\ntaskkill /F /IM SolveX.exe 2>nul\n"
+                            "timeout /t 1 /nobreak >nul\n"
+                            ".venv\\Scripts\\python.exe -m PyInstaller --noconfirm --clean solvex.spec\n"
+                            "start \"\" dist\\SolveX.exe\n"
+                        )
+
                 if sys.platform == "win32":
-                    os.startfile(saved_file_path)
+                    subprocess.Popen(["cmd.exe", "/c", build_bat], creationflags=subprocess.CREATE_NEW_CONSOLE, cwd=project_dir)
                 else:
                     subprocess.Popen([saved_file_path])
                 self.quit_app()
             except Exception as exc:
-                self._error("Khởi Chạy Lỗi", f"Không thể tự động mở file cài đặt: {exc}")
+                self._error("Khởi Chạy Cài Đặt Lỗi", f"Không thể kích hoạt kịch bản build.bat: {exc}")
 
     def on_build_exe(self):
         builder_script = _resource_path("solvex", "builder.py")
