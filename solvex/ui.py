@@ -48,6 +48,7 @@ from .gemini import GeminiClient, audio_part, image_part, text_part
 from .history import HistoryManager
 from .i18n import i18n
 from .icons import IconFactory
+from .saved_questions import SavedQuestionsManager
 from .updater import BuildExeWorker, CheckUpdateWorker, DownloadUpdateWorker
 from .version import APP_VERSION, changelog_markdown
 from .workers import AskWorker, CaptureWorker, RecordWorker, TestApiWorker
@@ -446,11 +447,25 @@ class AnswerWindow(QDialog):
         self.speak_btn.clicked.connect(self._speak_answer)
         buttons.addWidget(self.speak_btn)
 
+        self.save_star_btn = QPushButton("⭐ Lưu Câu Hỏi Khó")
+        self.save_star_btn.setIcon(IconFactory.draw_icon("star", style.AMBER, 16))
+        self.save_star_btn.clicked.connect(self._save_difficult_question)
+        buttons.addWidget(self.save_star_btn)
+
         buttons.addStretch(1)
         close_btn = QPushButton(i18n.t("btn_close"))
         close_btn.clicked.connect(self.close)
         buttons.addWidget(close_btn)
         layout.addLayout(buttons)
+
+    def _save_difficult_question(self):
+        parent = self.parent()
+        if parent and hasattr(parent, "saved_questions_mgr"):
+            title = parent._get_current_question_title()
+            img_path = parent._get_current_question_img()
+            parent.saved_questions_mgr.add_question(title, self.raw_markdown, img_path)
+            self.save_star_btn.setText("Đã lưu ⭐")
+            self.save_star_btn.setEnabled(False)
 
     def _copy_to_clipboard(self):
         cb = QApplication.clipboard()
@@ -563,6 +578,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.config = Config()
         self.history_mgr = HistoryManager()
+        self.saved_questions_mgr = SavedQuestionsManager()
         self.current_session = None
 
         i18n.set_language(self.config.get("language", "vi"))
@@ -955,6 +971,21 @@ class MainWindow(QMainWindow):
         title = QLabel(i18n.t("hist_title"))
         title.setObjectName("Brand")
         header_row.addWidget(title)
+
+        header_row.addSpacing(12)
+        self.hist_mode_btn_all = QPushButton("🕒 Lịch Sử Trò Chuyện")
+        self.hist_mode_btn_saved = QPushButton("⭐ Câu Hỏi Khó Saved")
+        self.hist_mode_btn_all.setCheckable(True)
+        self.hist_mode_btn_saved.setCheckable(True)
+        self.hist_mode_btn_all.setChecked(True)
+
+        self.hist_filter_group = QButtonGroup(self)
+        self.hist_filter_group.addButton(self.hist_mode_btn_all, 0)
+        self.hist_filter_group.addButton(self.hist_mode_btn_saved, 1)
+        self.hist_filter_group.idClicked.connect(lambda: self._refresh_history_list())
+
+        header_row.addWidget(self.hist_mode_btn_all)
+        header_row.addWidget(self.hist_mode_btn_saved)
         header_row.addStretch(1)
 
         self.hist_search_input = QLineEdit()
@@ -1459,18 +1490,25 @@ class MainWindow(QMainWindow):
                 self._error("Khởi Chạy Lỗi", f"Không thể tự động mở file cài đặt: {exc}")
 
     def on_build_exe(self):
-        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.status.showMessage("Đang tự động Build file SolveX.exe...")
-        self.build_worker = BuildExeWorker(project_dir)
-        self.build_worker.progress.connect(lambda msg: self.status.showMessage(f"Build: {msg}"))
-        self.build_worker.succeeded.connect(self._on_build_success)
-        self.build_worker.failed.connect(lambda err: self._error("Build Lỗi", err))
-        self.build_worker.start()
+        builder_script = _resource_path("solvex", "builder.py")
+        if not os.path.exists(builder_script):
+            builder_script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "builder.py")
 
-    def _on_build_success(self, exe_path: str):
-        msg = f"Đã build xong thành công!\n\nFile .exe được lưu tại:\n{exe_path}"
-        QMessageBox.information(self, "SolveX Build Complete", msg)
-        self.status.showMessage("Build .exe thành công!", 6000)
+        try:
+            if sys.platform == "win32":
+                subprocess.Popen(["cmd.exe", "/c", f"start \"SolveX Builder\" \"{sys.executable}\" \"{builder_script}\""], shell=True)
+            else:
+                subprocess.Popen([sys.executable, builder_script])
+            self.status.showMessage("Đã khởi chạy tiến trình SolveX Builder độc lập!", 5000)
+            QMessageBox.information(
+                self,
+                "SolveX Standalone Builder",
+                "Đã mở cửa sổ SolveX Builder độc lập!\n\n"
+                "Tiến trình đóng gói file SolveX.exe đang tự chạy trong cửa sổ mới. "
+                "Bạn có thể thoải mái sử dụng hoặc đóng SolveX mà không làm gián đoạn quá trình Build."
+            )
+        except Exception as exc:
+            self._error("Lỗi Khởi Chạy Builder", str(exc))
 
     def _client(self) -> GeminiClient:
         return GeminiClient(
@@ -1719,9 +1757,21 @@ class MainWindow(QMainWindow):
         self.toolbar.solve_btn.setEnabled(True)
         self.ask_worker = None
 
+    def _get_current_question_title(self) -> str:
+        for item in reversed(self.messages):
+            if item[0] == "user":
+                return item[1][:100]
+        return "Câu hỏi khó SolveX"
+
+    def _get_current_question_img(self) -> str:
+        for item in reversed(self.messages):
+            if item[0] == "user" and len(item) > 2 and item[2]:
+                return item[2]
+        return ""
+
     def _popup_answer(self, text: str):
         if self.answer_window is None:
-            self.answer_window = AnswerWindow()
+            self.answer_window = AnswerWindow(self)
         enable_tts = bool(self.config.get("enable_tts", True))
         self.answer_window.show_answer(text, self.config.get("theme", "dark"), enable_tts)
         if enable_tts and self.config.get("auto_tts", False):
@@ -1781,13 +1831,26 @@ class MainWindow(QMainWindow):
     # ------------------ History Tab Actions & Search Filter & Markdown Export ------------------
     def _refresh_history_list(self):
         self.hist_list.clear()
-        sessions = self.history_mgr.list_sessions()
-        for s in sessions:
-            title = s["title"] if s["title"] else i18n.t("hist_no_title")
-            item = QListWidgetItem(f"🕒 {s['timestamp']}\n{title}")
-            item.setData(Qt.ItemDataRole.UserRole, s["id"])
-            item.setData(Qt.ItemDataRole.UserRole + 1, title.lower())
-            self.hist_list.addItem(item)
+        is_saved_tab = hasattr(self, "hist_mode_btn_saved") and self.hist_mode_btn_saved.isChecked()
+
+        if is_saved_tab:
+            items = self.saved_questions_mgr.list_saved()
+            for q in items:
+                title = q.get("title", "Câu hỏi khó")
+                item = QListWidgetItem(f"⭐ {q.get('timestamp', '')}\n{title}")
+                item.setData(Qt.ItemDataRole.UserRole, q)
+                item.setData(Qt.ItemDataRole.UserRole + 1, title.lower())
+                item.setData(Qt.ItemDataRole.UserRole + 2, "saved")
+                self.hist_list.addItem(item)
+        else:
+            sessions = self.history_mgr.list_sessions()
+            for s in sessions:
+                title = s["title"] if s["title"] else i18n.t("hist_no_title")
+                item = QListWidgetItem(f"🕒 {s['timestamp']}\n{title}")
+                item.setData(Qt.ItemDataRole.UserRole, s["id"])
+                item.setData(Qt.ItemDataRole.UserRole + 1, title.lower())
+                item.setData(Qt.ItemDataRole.UserRole + 2, "session")
+                self.hist_list.addItem(item)
         self._filter_history_list()
 
     def _filter_history_list(self):
@@ -1798,25 +1861,42 @@ class MainWindow(QMainWindow):
             item.setHidden(bool(query and query not in search_key))
 
     def on_history_item_clicked(self, item: QListWidgetItem):
-        sid = item.data(Qt.ItemDataRole.UserRole)
-        session = self.history_mgr.load_session(sid)
-        if not session:
-            return
-        self.current_session = session
-        self.messages = session.get("messages", [])
-        
+        kind = item.data(Qt.ItemDataRole.UserRole + 2)
         theme = self.config.get("theme", "dark")
         p = style.get_palette(theme)
-        blocks = []
-        for item in self.messages:
-            role, text = item[0], item[1]
-            img_path = item[2] if len(item) > 2 else None
+
+        if kind == "saved":
+            qdata = item.data(Qt.ItemDataRole.UserRole)
+            if not isinstance(qdata, dict):
+                return
+            title = qdata.get("title", "")
+            markdown_text = qdata.get("markdown", "")
+            img_path = qdata.get("image_path")
             img_html = f"<br><img class='question-img' src='{Path(img_path).as_uri()}' width='320'/><br>" if img_path and os.path.exists(img_path) else ""
+
+            body = (
+                f"<div style='margin:12px 0;'><b style='color:{p['AMBER']};'>⭐ CÂU HỎI KHÓ ĐÃ LƯU:</b><br>{html_lib.escape(title)}{img_html}</div>"
+                f"<div style='margin:12px 0;'><b style='color:{p['TEAL']};'>🤖 LỜI GIẢI AI:</b><br>{render_markdown(markdown_text)}</div>"
+            )
+            self.hist_preview.setHtml(f"<style>{style.get_chat_css(theme)}</style>{body}")
+        else:
+            sid = item.data(Qt.ItemDataRole.UserRole)
+            session = self.history_mgr.load_session(sid)
+            if not session:
+                return
+            self.current_session = session
+            self.messages = session.get("messages", [])
             
-            lbl_color = p["AMBER"] if role == "user" else p["TEAL"]
-            blocks.append(f"<div style='margin:8px 0;'><b style='color:{lbl_color};'>{role.upper()}:</b> {render_markdown(text)}{img_html}</div>")
-        
-        self.hist_preview.setHtml(f"<style>{style.get_chat_css(theme)}</style>{''.join(blocks)}")
+            blocks = []
+            for item in self.messages:
+                role, text = item[0], item[1]
+                img_path = item[2] if len(item) > 2 else None
+                img_html = f"<br><img class='question-img' src='{Path(img_path).as_uri()}' width='320'/><br>" if img_path and os.path.exists(img_path) else ""
+                
+                lbl_color = p["AMBER"] if role == "user" else p["TEAL"]
+                blocks.append(f"<div style='margin:8px 0;'><b style='color:{lbl_color};'>{role.upper()}:</b> {render_markdown(text)}{img_html}</div>")
+            
+            self.hist_preview.setHtml(f"<style>{style.get_chat_css(theme)}</style>{''.join(blocks)}")
 
     def on_export_history(self):
         if not self.messages:

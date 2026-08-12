@@ -28,8 +28,25 @@ class IconFactory:
         pad = s * 0.16
         rect = QRectF(pad, pad, s - 2 * pad, s - 2 * pad)
 
-        if name == "settings":
-            # Icon Cài Đặt Tinh Tế (WinUI 3 Precision 6-Tooth Gear & Concentric Inner Ring)
+        if name == "star":
+            # Icon Ngôi Sao Đánh Dấu Câu Hỏi Khó
+            cx, cy = rect.center().x(), rect.center().y()
+            r_out, r_in = rect.width() * 0.44, rect.width() * 0.18
+            import math
+            path = QPainterPath()
+            for i in range(10):
+                r = r_out if i % 2 == 0 else r_in
+                angle = i * math.pi / 5 - math.pi / 2
+                px = cx + r * math.cos(angle)
+                py = cy + r * math.sin(angle)
+                if i == 0:
+                    path.moveTo(px, py)
+                else:
+                    path.lineTo(px, py)
+            path.closeSubpath()
+            painter.drawPath(path)
+
+        elif name == "settings":
             cx, cy = rect.center().x(), rect.center().y()
             r_out, r_in, r_hole = rect.width() * 0.44, rect.width() * 0.32, rect.width() * 0.18
             path = QPainterPath()
@@ -243,7 +260,6 @@ class IconFactory:
             painter.drawPath(path)
 
         elif name == "speaker":
-            # Icon Loa Đọc Lời Giải (Text-to-Speech)
             x, y, w, h = rect.x(), rect.y(), rect.width(), rect.height()
             path = QPainterPath()
             path.moveTo(x + w * 0.12, y + h * 0.36)

@@ -1,9 +1,19 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.2.248963c"
+APP_VERSION = "1.8.3.593710a"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.8.3.593710a",
+        "2026-08-13",
+        [
+            "Tách tiến trình Build .exe tự động sang cửa sổ ứng dụng độc lập (solvex/builder.py), đảm bảo khi tắt SolveX chính thì việc Build file .exe vẫn tiếp diễn 100%.",
+            "Bổ sung tính năng ⭐ Lưu Câu Hỏi Khó (Bookmark Difficult Questions): Thêm nút [⭐ Lưu Câu Hỏi Khó] trực tiếp trong cửa sổ hiển thị lời giải.",
+            "Lưu trữ dữ liệu câu hỏi khó persistent vào local storage: APPDATA/SolveX/saved_questions.json.",
+            "Bổ sung bộ lọc ⭐ Câu Hỏi Khó Saved trong Tab Lịch Sử cho phép bấm mở xem lại ảnh chụp & lời giải chi tiết bất cứ lúc nào.",
+        ],
+    ),
     (
         "1.8.2.248963c",
         "2026-08-13",
