@@ -1,9 +1,10 @@
-"""Giao diện SolveX v1.7.3 — WinUI 3 Modern Friendly UI, App Logo Tray Icon,
-In-App Direct Update Downloader (Tiến độ %, tốc độ, ETA) & Auto Install Prompt.
+"""Giao diện SolveX v1.8.0 — WinUI 3 Modern Friendly UI, App Logo Tray Icon,
+In-App Direct Update Downloader, Exquisite Settings Icon & Speech TTS Voice Reader.
 """
 
 import html as html_lib
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -295,7 +296,6 @@ class CompactWindow(QWidget):
         self.listen_btn.clicked.connect(self.main.on_listening_clicked)
         row.addWidget(self.listen_btn)
 
-        # Bộ chọn chế độ làm bài ngay trên thanh Top Bar nổi
         self.top_mode_combo = QComboBox()
         self.top_mode_combo.addItem(i18n.t("mode_step"), "step")
         self.top_mode_combo.addItem(i18n.t("mode_mcq"), "mcq")
@@ -418,7 +418,7 @@ class CompactWindow(QWidget):
 
 
 # --------------------------------------------------------------------------
-# Answer Window & Busy Indicator
+# Answer Window & Busy Indicator (Tích hợp Đọc Lời Giải Giọng Nói TTS)
 # --------------------------------------------------------------------------
 class AnswerWindow(QDialog):
     def __init__(self, parent=None):
@@ -441,6 +441,11 @@ class AnswerWindow(QDialog):
         self.copy_btn.clicked.connect(self._copy_to_clipboard)
         buttons.addWidget(self.copy_btn)
 
+        self.speak_btn = QPushButton("🔊 Đọc Lời Giải (TTS)")
+        self.speak_btn.setIcon(IconFactory.draw_icon("speaker", style.TEAL, 16))
+        self.speak_btn.clicked.connect(self._speak_answer)
+        buttons.addWidget(self.speak_btn)
+
         buttons.addStretch(1)
         close_btn = QPushButton(i18n.t("btn_close"))
         close_btn.clicked.connect(self.close)
@@ -452,6 +457,34 @@ class AnswerWindow(QDialog):
         cb.setText(self.raw_markdown)
         self.copy_btn.setText("Đã sao chép! ✓")
         QTimer.singleShot(2000, lambda: self.copy_btn.setText(i18n.t("btn_copy_answer")))
+
+    def _speak_answer(self):
+        text_clean = re.sub(r'[*#_`\[\]()<=>\\]', ' ', self.raw_markdown)
+        text_clean = re.sub(r'\s+', ' ', text_clean).strip()
+        if not text_clean:
+            return
+
+        self.speak_btn.setEnabled(False)
+        self.speak_btn.setText("Đang đọc...")
+
+        def _tts_thread():
+            try:
+                if sys.platform == "win32":
+                    powershell_script = f'''
+                    Add-Type -AssemblyName System.Speech;
+                    $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer;
+                    $synth.Rate = 0;
+                    $synth.Speak('{text_clean[:600].replace("'", "''")}');
+                    '''
+                    subprocess.run(["powershell", "-Command", powershell_script], capture_output=True)
+            except Exception:
+                pass
+
+        import threading
+        t = threading.Thread(target=_tts_thread, daemon=True)
+        t.start()
+
+        QTimer.singleShot(4000, lambda: (self.speak_btn.setEnabled(True), self.speak_btn.setText("🔊 Đọc Lời Giải (TTS)")))
 
     def show_answer(self, markdown_text: str, theme: str = "dark"):
         self.raw_markdown = markdown_text
@@ -517,7 +550,7 @@ class BusyIndicator(QWidget):
 
 
 # --------------------------------------------------------------------------
-# Cửa sổ chính MainWindow (WinUI 3 Modern Friendly v1.7.3)
+# Cửa sổ chính MainWindow (WinUI 3 Modern Friendly v1.8.0)
 # --------------------------------------------------------------------------
 class MainWindow(QMainWindow):
     SYSTEM_INSTRUCTION = (
@@ -725,7 +758,7 @@ class MainWindow(QMainWindow):
         self._shutdown()
         QApplication.instance().quit()
 
-    # ------------------ Xây dựng WinUI 3 UI v1.7.3 ------------------
+    # ------------------ Xây dựng WinUI 3 UI v1.8.0 ------------------
     def _build_ui(self):
         root = QWidget()
         self.setCentralWidget(root)

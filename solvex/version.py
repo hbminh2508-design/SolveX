@@ -1,9 +1,18 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.7.3.7c70908"
+APP_VERSION = "1.8.0.260ec6c"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.8.0.260ec6c",
+        "2026-08-12",
+        [
+            "Tái thiết kế Icon Cài Đặt (bánh răng WinUI 3) 6 răng tỉ lệ chuẩn xa xỉ, đường nét thanh lịch và tinh tế.",
+            "Bổ sung tính năng 🔊 Đọc Lời Giải Giọng Nói AI (Text-to-Speech Voice Reader) ngay trong cửa sổ hiển thị đáp án.",
+            "Gợi ý các tính năng đột phá mới cho phiên bản v1.8: Trình soạn thảo công thức toán LaTeX 1-Click, Phím tắt Mini Floating Card toàn hệ thống, Xuất file PDF / HTML in ấn bài tập chuyên nghiệp.",
+        ],
+    ),
     (
         "1.7.3.7c70908",
         "2026-08-12",

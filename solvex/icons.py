@@ -28,45 +28,68 @@ class IconFactory:
         pad = s * 0.16
         rect = QRectF(pad, pad, s - 2 * pad, s - 2 * pad)
 
-        if name == "camera":
-            # Icon Máy Ảnh Thực Tế (Camera Body + Lens + Shutter Button + Flash)
+        if name == "settings":
+            # Icon Cài Đặt Tinh Tế (WinUI 3 Precision 6-Tooth Gear & Concentric Inner Ring)
+            cx, cy = rect.center().x(), rect.center().y()
+            r_out, r_in, r_hole = rect.width() * 0.44, rect.width() * 0.32, rect.width() * 0.18
+            path = QPainterPath()
+            import math
+            n_teeth = 6
+            tooth_width_angle = math.pi / (n_teeth * 3)
+
+            for i in range(n_teeth):
+                center_angle = i * (2 * math.pi / n_teeth) - math.pi / 2
+                a1 = center_angle - tooth_width_angle * 1.2
+                a2 = center_angle - tooth_width_angle * 0.6
+                a3 = center_angle + tooth_width_angle * 0.6
+                a4 = center_angle + tooth_width_angle * 1.2
+
+                p1 = QPointF(cx + r_in * math.cos(a1), cy + r_in * math.sin(a1))
+                p2 = QPointF(cx + r_out * math.cos(a2), cy + r_out * math.sin(a2))
+                p3 = QPointF(cx + r_out * math.cos(a3), cy + r_out * math.sin(a3))
+                p4 = QPointF(cx + r_in * math.cos(a4), cy + r_in * math.sin(a4))
+
+                if i == 0:
+                    path.moveTo(p1)
+                else:
+                    path.lineTo(p1)
+                path.lineTo(p2)
+                path.lineTo(p3)
+                path.lineTo(p4)
+
+            path.closeSubpath()
+            path.addEllipse(QPointF(cx, cy), r_hole, r_hole)
+            painter.drawPath(path)
+
+        elif name == "camera":
             x, y, w, h = rect.x(), rect.y() + rect.height() * 0.15, rect.width(), rect.height() * 0.75
             path = QPainterPath()
-            # Thân máy ảnh hình chữ nhật bo góc
             path.addRoundedRect(QRectF(x, y, w, h), 4, 4)
-            # Nút bấm chụp góc trên bên trái
             path.moveTo(x + w * 0.18, y)
             path.lineTo(x + w * 0.32, y)
-            # Khung ống ngắm / Đèn flash góc trên bên phải
             path.moveTo(x + w * 0.62, y)
             path.lineTo(x + w * 0.72, y - 2)
             path.lineTo(x + w * 0.84, y - 2)
             path.lineTo(x + w * 0.88, y)
-            # Ống kính máy ảnh chính giữa (Lens vòng đôi)
             cx, cy = rect.center().x(), y + h * 0.52
             path.addEllipse(QPointF(cx, cy), w * 0.28, w * 0.28)
             path.addEllipse(QPointF(cx, cy), w * 0.14, w * 0.14)
             painter.drawPath(path)
 
         elif name in ("compact", "topbar"):
-            # Icon Nút Top Bar Nổi: Thanh Ngang ở dưới + Mũi Tên Hướng Lên (↑) ở trên
             cx, cy = rect.center().x(), rect.center().y()
             w, h = rect.width(), rect.height()
             path = QPainterPath()
-            # Thanh ngang nằm dưới
             path.moveTo(rect.x(), rect.y() + h * 0.88)
             path.lineTo(rect.x() + w, rect.y() + h * 0.88)
-            # Thân mũi tên thẳng đứng chỉ lên trên (↑)
             path.moveTo(cx, rect.y() + h * 0.74)
             path.lineTo(cx, rect.y() + h * 0.08)
-            # Đầu mũi tên hướng lên
             path.moveTo(cx - w * 0.28, rect.y() + h * 0.36)
             path.lineTo(cx, rect.y() + h * 0.08)
             path.lineTo(cx + w * 0.28, rect.y() + h * 0.36)
             painter.drawPath(path)
 
         elif name in ("solve", "sparkle"):
-            # Icon ngôi sao AI WinUI 3
             cx, cy = s * 0.5, s * 0.5
             r_out, r_in = s * 0.38, s * 0.12
             path = QPainterPath()
@@ -84,7 +107,6 @@ class IconFactory:
             painter.drawPath(path)
 
         elif name in ("headphones", "listen"):
-            # Icon tai nghe thanh lịch
             cx, cy = s * 0.5, s * 0.5
             r = s * 0.34
             path = QPainterPath()
@@ -96,7 +118,6 @@ class IconFactory:
             painter.drawRoundedRect(QRectF(cx + r - 2, cy - 1, 4, r * 0.8), 2, 2)
 
         elif name == "history":
-            # Icon đồng hồ WinUI 3
             cx, cy = rect.center().x(), rect.center().y()
             r = rect.width() * 0.44
             path = QPainterPath()
@@ -106,28 +127,7 @@ class IconFactory:
             path.lineTo(cx + r * 0.45, cy)
             painter.drawPath(path)
 
-        elif name == "settings":
-            # Icon bánh răng WinUI 3
-            cx, cy = rect.center().x(), rect.center().y()
-            r_out, r_in = rect.width() * 0.44, rect.width() * 0.28
-            path = QPainterPath()
-            import math
-            n_teeth = 8
-            for i in range(n_teeth * 2):
-                angle = i * math.pi / n_teeth
-                r = r_out if i % 2 == 0 else r_in
-                px = cx + r * math.cos(angle)
-                py = cy + r * math.sin(angle)
-                if i == 0:
-                    path.moveTo(px, py)
-                else:
-                    path.lineTo(px, py)
-            path.closeSubpath()
-            path.addEllipse(QPointF(cx, cy), r_in * 0.5, r_in * 0.5)
-            painter.drawPath(path)
-
         elif name == "guide":
-            # Icon cuốn sách WinUI 3
             w, h = rect.width(), rect.height()
             x, y = rect.x(), rect.y()
             path = QPainterPath()
@@ -143,7 +143,6 @@ class IconFactory:
             painter.drawPath(path)
 
         elif name in ("changelog", "spark"):
-            # Icon Dấu Chấm Than (!) Thông Tin cho nút "Có gì mới"
             cx, cy = rect.center().x(), rect.center().y()
             r = rect.width() * 0.44
             path = QPainterPath()
@@ -155,7 +154,6 @@ class IconFactory:
             painter.drawPath(path)
 
         elif name == "globe":
-            # Icon quả địa cầu WinUI 3
             cx, cy = rect.center().x(), rect.center().y()
             r = rect.width() * 0.44
             painter.drawEllipse(QPointF(cx, cy), r, r)
@@ -163,7 +161,6 @@ class IconFactory:
             painter.drawEllipse(QPointF(cx, cy), r * 0.45, r)
 
         elif name == "moon":
-            # Icon mặt trăng lưỡi liềm (Dark Mode)
             path = QPainterPath()
             cx, cy = rect.center().x(), rect.center().y()
             r = rect.width() * 0.42
@@ -174,7 +171,6 @@ class IconFactory:
             painter.drawPath(moon_path)
 
         elif name == "sun":
-            # Icon mặt trời WinUI 3
             cx, cy = rect.center().x(), rect.center().y()
             r = rect.width() * 0.22
             painter.drawEllipse(QPointF(cx, cy), r, r)
@@ -188,7 +184,6 @@ class IconFactory:
                 painter.drawLine(QPointF(x1, y1), QPointF(x2, y2))
 
         elif name in ("update", "sync"):
-            # Icon lặp đồng bộ WinUI 3
             cx, cy = rect.center().x(), rect.center().y()
             r = rect.width() * 0.38
             path = QPainterPath()
@@ -205,7 +200,6 @@ class IconFactory:
             painter.drawPath(path_arrow)
 
         elif name == "trash":
-            # Icon thùng rác WinUI 3
             x, y, w, h = rect.x(), rect.y(), rect.width(), rect.height()
             path = QPainterPath()
             path.moveTo(x, y + h * 0.22)
@@ -238,7 +232,6 @@ class IconFactory:
             painter.drawPath(path)
 
         elif name == "tray":
-            # Icon Nút Thu Xuống Khay: Mũi Tên Hướng Xuống Dưới (↓)
             cx, cy = rect.center().x(), rect.center().y()
             w, h = rect.width(), rect.height()
             path = QPainterPath()
@@ -247,6 +240,21 @@ class IconFactory:
             path.moveTo(cx - w * 0.3, rect.y() + h * 0.52)
             path.lineTo(cx, rect.y() + h * 0.82)
             path.lineTo(cx + w * 0.3, rect.y() + h * 0.52)
+            painter.drawPath(path)
+
+        elif name == "speaker":
+            # Icon Loa Đọc Lời Giải (Text-to-Speech)
+            x, y, w, h = rect.x(), rect.y(), rect.width(), rect.height()
+            path = QPainterPath()
+            path.moveTo(x + w * 0.12, y + h * 0.36)
+            path.lineTo(x + w * 0.32, y + h * 0.36)
+            path.lineTo(x + w * 0.58, y + h * 0.15)
+            path.lineTo(x + w * 0.58, y + h * 0.85)
+            path.lineTo(x + w * 0.32, y + h * 0.64)
+            path.lineTo(x + w * 0.12, y + h * 0.64)
+            path.closeSubpath()
+            path.arcMoveTo(QRectF(x + w * 0.48, y + h * 0.28, w * 0.36, h * 0.44), 300)
+            path.arcTo(QRectF(x + w * 0.48, y + h * 0.28, w * 0.36, h * 0.44), 300, 120)
             painter.drawPath(path)
 
         elif name == "minimize":
