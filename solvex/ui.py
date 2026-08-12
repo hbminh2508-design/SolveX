@@ -59,15 +59,91 @@ except Exception:
     md_lib = None
 
 
+def _simple_markdown_parse(text: str) -> str:
+    """Fall-back Markdown & Math parser converting Markdown blocks to clean HTML."""
+    lines = text.split("\n")
+    html_lines = []
+    in_code = False
+    code_block = []
+
+    for line in lines:
+        if line.strip().startswith("```"):
+            if in_code:
+                in_code = False
+                code_text = html_lib.escape("\n".join(code_block))
+                html_lines.append(f"<pre><code>{code_text}</code></pre>")
+                code_block = []
+            else:
+                in_code = True
+            continue
+
+        if in_code:
+            code_block.append(line)
+            continue
+
+        if line.startswith("### "):
+            html_lines.append(f"<h3>{html_lib.escape(line[4:])}</h3>")
+        elif line.startswith("## "):
+            html_lines.append(f"<h2>{html_lib.escape(line[3:])}</h2>")
+        elif line.startswith("# "):
+            html_lines.append(f"<h1>{html_lib.escape(line[2:])}</h1>")
+        elif line.strip().startswith("- ") or line.strip().startswith("* "):
+            item_text = line.strip()[2:]
+            html_lines.append(f"<li>{item_text}</li>")
+        elif not line.strip():
+            html_lines.append("<br>")
+        else:
+            html_lines.append(f"<p>{line}</p>")
+
+    parsed = "\n".join(html_lines)
+    parsed = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', parsed)
+    parsed = re.sub(r'\*(.*?)\*', r'<i>\1</i>', parsed)
+    parsed = re.sub(r'`(.*?)`', r'<code>\1</code>', parsed)
+    return parsed
+
+
 def render_markdown(text: str) -> str:
-    if md_lib is None:
-        return "<pre>" + html_lib.escape(text) + "</pre>"
-    try:
-        return md_lib.markdown(
-            text, extensions=["fenced_code", "tables", "nl2br", "sane_lists"]
-        )
-    except Exception:
-        return "<pre>" + html_lib.escape(text) + "</pre>"
+    if not text:
+        return ""
+    if md_lib is not None:
+        try:
+            return md_lib.markdown(
+                text, extensions=["fenced_code", "tables", "nl2br", "sane_lists"]
+            )
+        except Exception:
+            pass
+    return _simple_markdown_parse(text)
+
+
+MATHJAX_SCRIPT = """
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']]
+  },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
+</script>
+"""
+
+
+def wrap_html_page(body_html: str, theme: str = "dark") -> str:
+    css = style.get_chat_css(theme)
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>{css}</style>
+{MATHJAX_SCRIPT}
+</head>
+<body>
+{body_html}
+</body>
+</html>"""
 
 
 def _resource_path(*parts) -> str:
@@ -505,7 +581,8 @@ class AnswerWindow(QDialog):
         self.raw_markdown = markdown_text
         self.setStyleSheet(style.get_stylesheet(theme))
         self.speak_btn.setVisible(enable_tts)
-        self.browser.setHtml(f"<style>{style.get_chat_css(theme)}</style>{render_markdown(markdown_text)}")
+        body = render_markdown(markdown_text)
+        self.browser.setHtml(wrap_html_page(body, theme))
         self.show()
         self.raise_()
         self.activateWindow()
@@ -1827,7 +1904,7 @@ class MainWindow(QMainWindow):
                     )
             body = "".join(blocks)
 
-        self.chat.setHtml(f"<style>{style.get_chat_css(theme)}</style>{body}")
+        self.chat.setHtml(wrap_html_page(body, theme))
         scrollbar = self.chat.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
 
@@ -1881,7 +1958,7 @@ class MainWindow(QMainWindow):
                 f"<div style='margin:12px 0;'><b style='color:{p['AMBER']};'>⭐ CÂU HỎI KHÓ ĐÃ LƯU:</b><br>{html_lib.escape(title)}{img_html}</div>"
                 f"<div style='margin:12px 0;'><b style='color:{p['TEAL']};'>🤖 LỜI GIẢI AI:</b><br>{render_markdown(markdown_text)}</div>"
             )
-            self.hist_preview.setHtml(f"<style>{style.get_chat_css(theme)}</style>{body}")
+            self.hist_preview.setHtml(wrap_html_page(body, theme))
         else:
             sid = item.data(Qt.ItemDataRole.UserRole)
             session = self.history_mgr.load_session(sid)
@@ -1899,7 +1976,7 @@ class MainWindow(QMainWindow):
                 lbl_color = p["AMBER"] if role == "user" else p["TEAL"]
                 blocks.append(f"<div style='margin:8px 0;'><b style='color:{lbl_color};'>{role.upper()}:</b> {render_markdown(text)}{img_html}</div>")
             
-            self.hist_preview.setHtml(f"<style>{style.get_chat_css(theme)}</style>{''.join(blocks)}")
+            self.hist_preview.setHtml(wrap_html_page(''.join(blocks), theme))
 
     def on_export_history(self):
         if not self.messages:

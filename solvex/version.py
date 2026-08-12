@@ -1,9 +1,18 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.4.90cf404"
+APP_VERSION = "1.8.5.95f08eb"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.8.5.95f08eb",
+        "2026-08-13",
+        [
+            "Nâng cấp bộ chuyển đổi Markdown & tích hợp bộ dịch công thức toán học MathJax 3 cho tất cả các cửa sổ hiển thị (AnswerWindow, MainWindow Chat, Tab Lịch Sử).",
+            "Khắc phục triệt để lỗi hiển thị code thô (raw code) trong cửa sổ đáp án.",
+            "Tự động chuyển đổi các ký hiệu toán học LaTeX (phân số, căn thức, tích phân, ma trận...) dạng $inline$ và $$display$$ thành ký hiệu toán học chuẩn mực sắc nét như sách giáo khoa.",
+        ],
+    ),
     (
         "1.8.4.90cf404",
         "2026-08-13",
