@@ -1,9 +1,24 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.8.3942af3"
+APP_VERSION = "1.8.9"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.8.9",
+        "2026-08-13",
+        [
+            "Viết lại triệt để bộ chuyển đổi LaTeX Math → HTML Native cho QTextBrowser (render_latex_math v2.0).",
+            "Bổ sung đầy đủ 100+ ký hiệu LaTeX: ∑ (\\sum), ∏ (\\prod), ∫ (\\int), ∂ (\\partial), ∇ (\\nabla), ∀ (\\forall), ∃ (\\exists), ∞ (\\infty), và toàn bộ bảng chữ cái Hy Lạp.",
+            "Hỗ trợ lệnh \\text{}, \\mathcal{}, \\mathbb{}, \\mathbf{}, \\mathrm{}, \\operatorname{} — chuyển đổi chính xác sang Unicode/HTML.",
+            "Hỗ trợ dấu trang trí \\vec{}, \\hat{}, \\bar{}, \\overline{}, \\tilde{}, \\dot{}, \\ddot{}, \\underline{}, \\boxed{} cho biến toán học.",
+            "Xử lý đệ quy phân số lồng nhau \\frac{\\frac{a}{b}}{c}, căn thức \\sqrt[n]{}, và chỉ số trên/dưới lồng _{\\text{nguồn}}.",
+            "Hỗ trợ môi trường LaTeX: \\begin{cases}, \\begin{aligned}, \\begin{matrix/pmatrix/bmatrix/vmatrix}.",
+            "Hỗ trợ delimiter \\left( \\right), \\langle \\rangle, \\lfloor \\rfloor, \\lceil \\rceil.",
+            "Hỗ trợ ký hiệu toán tử logic (∧ ∨ ¬ ⇒ ⇔), tập hợp (∈ ∉ ⊂ ⊃ ∪ ∩ ∅), và mũi tên (→ ← ↔ ⇒ ⇐ ↦).",
+            "Hỗ trợ cú pháp \\(...\\) và \\[...\\] bên cạnh $...$ và $$...$$.",
+        ],
+    ),
     (
         "1.8.8.3942af3",
         "2026-08-13",
@@ -13,6 +28,7 @@ CHANGELOG = [
             "Đảm bảo khi phát hành bản mới trên GitHub (như v1.8.7, v1.8.8), ứng dụng sẽ nhận diện ngay lập tức 100%.",
         ],
     ),
+
     (
         "1.8.7.97fd046",
         "2026-08-13",

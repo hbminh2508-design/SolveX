@@ -103,70 +103,533 @@ def _simple_markdown_parse(text: str) -> str:
 
 
 GREEK_MAP = {
-    r"\Phi": "Φ", r"\phi": "φ", r"\alpha": "α", r"\beta": "β",
-    r"\gamma": "γ", r"\delta": "δ", r"\Delta": "Δ", r"\theta": "θ",
-    r"\lambda": "λ", r"\mu": "μ", r"\pi": "π", r"\sigma": "σ",
-    r"\omega": "ω", r"\Omega": "Ω", r"\tau": "τ", r"\epsilon": "ε",
-    r"\rho": "ρ", r"\eta": "η", r"\xi": "ξ", r"\psi": "ψ"
+    # Lowercase Greek
+    r"\alpha": "α", r"\beta": "β", r"\gamma": "γ", r"\delta": "δ",
+    r"\epsilon": "ε", r"\varepsilon": "ε", r"\zeta": "ζ", r"\eta": "η",
+    r"\theta": "θ", r"\vartheta": "ϑ", r"\iota": "ι", r"\kappa": "κ",
+    r"\lambda": "λ", r"\mu": "μ", r"\nu": "ν", r"\xi": "ξ",
+    r"\pi": "π", r"\varpi": "ϖ", r"\rho": "ρ", r"\varrho": "ϱ",
+    r"\sigma": "σ", r"\varsigma": "ς", r"\tau": "τ", r"\upsilon": "υ",
+    r"\phi": "φ", r"\varphi": "φ", r"\chi": "χ", r"\psi": "ψ",
+    r"\omega": "ω",
+    # Uppercase Greek
+    r"\Gamma": "Γ", r"\Delta": "Δ", r"\Theta": "Θ", r"\Lambda": "Λ",
+    r"\Xi": "Ξ", r"\Pi": "Π", r"\Sigma": "Σ", r"\Upsilon": "Υ",
+    r"\Phi": "Φ", r"\Psi": "Ψ", r"\Omega": "Ω",
 }
 
-MATH_OPS = [
-    (r"\cdot", " · "), (r"\times", " × "), (r"\div", " ÷ "),
-    (r"\pm", " ± "), (r"\mp", " ∓ "), (r"\le", " ≤ "), (r"\leq", " ≤ "),
-    (r"\ge", " ≥ "), (r"\geq", " ≥ "), (r"\neq", " ≠ "), (r"\approx", " ≈ "),
-    (r"\infty", "∞"), (r"\rightarrow", " → "), (r"\to", " → "),
-    (r"\degree", "°"), (r"\circ", "°"),
-    (r"\cos", "cos "), (r"\sin", "sin "), (r"\tan", "tan "), (r"\cot", "cot "),
-    (r"\log", "log "), (r"\ln", "ln "), (r"\lim", "lim ")
+MATH_SYMBOLS = {
+    # Binary operators
+    r"\cdot": " · ", r"\times": " × ", r"\div": " ÷ ",
+    r"\pm": " ± ", r"\mp": " ∓ ", r"\ast": " ∗ ", r"\star": " ⋆ ",
+    r"\bullet": " • ", r"\oplus": " ⊕ ", r"\otimes": " ⊗ ",
+    # Relations
+    r"\le": " ≤ ", r"\leq": " ≤ ", r"\ge": " ≥ ", r"\geq": " ≥ ",
+    r"\neq": " ≠ ", r"\ne": " ≠ ", r"\approx": " ≈ ", r"\equiv": " ≡ ",
+    r"\sim": " ∼ ", r"\simeq": " ≃ ", r"\cong": " ≅ ",
+    r"\propto": " ∝ ", r"\ll": " ≪ ", r"\gg": " ≫ ",
+    r"\subset": " ⊂ ", r"\supset": " ⊃ ", r"\subseteq": " ⊆ ", r"\supseteq": " ⊇ ",
+    r"\in": " ∈ ", r"\notin": " ∉ ", r"\ni": " ∋ ",
+    r"\cup": " ∪ ", r"\cap": " ∩ ",
+    # Arrows
+    r"\rightarrow": " → ", r"\to": " → ", r"\leftarrow": " ← ",
+    r"\Rightarrow": " ⇒ ", r"\Leftarrow": " ⇐ ",
+    r"\leftrightarrow": " ↔ ", r"\Leftrightarrow": " ⇔ ",
+    r"\implies": " ⟹ ", r"\iff": " ⟺ ",
+    r"\uparrow": " ↑ ", r"\downarrow": " ↓ ",
+    r"\mapsto": " ↦ ",
+    # Big operators
+    r"\sum": "∑", r"\prod": "∏", r"\coprod": "∐",
+    r"\int": "∫", r"\iint": "∬", r"\iiint": "∭", r"\oint": "∮",
+    r"\bigcup": "⋃", r"\bigcap": "⋂",
+    # Misc symbols
+    r"\infty": "∞", r"\partial": "∂", r"\nabla": "∇",
+    r"\forall": "∀", r"\exists": "∃", r"\nexists": "∄",
+    r"\emptyset": "∅", r"\varnothing": "∅",
+    r"\degree": "°", r"\circ": "°",
+    r"\angle": "∠", r"\measuredangle": "∡",
+    r"\triangle": "△", r"\square": "□",
+    r"\perp": " ⊥ ", r"\parallel": " ∥ ",
+    r"\hbar": "ℏ", r"\ell": "ℓ", r"\Re": "ℜ", r"\Im": "ℑ",
+    r"\aleph": "ℵ",
+    r"\neg": "¬", r"\lnot": "¬",
+    r"\wedge": " ∧ ", r"\land": " ∧ ",
+    r"\vee": " ∨ ", r"\lor": " ∨ ",
+    r"\ldots": "…", r"\cdots": "⋯", r"\vdots": "⋮", r"\ddots": "⋱", r"\dots": "…",
+    r"\therefore": "∴", r"\because": "∵",
+    # Spacing & decorators
+    r"\quad": "  ", r"\qquad": "    ",
+    r"\,": " ", r"\;": " ", r"\:": " ", r"\ ": " ",
+    # Delimiters
+    r"\lbrace": "{", r"\rbrace": "}", r"\{": "{", r"\}": "}",
+    r"\langle": "⟨", r"\rangle": "⟩",
+    r"\lfloor": "⌊", r"\rfloor": "⌋", r"\lceil": "⌈", r"\rceil": "⌉",
+    r"\vert": "|", r"\Vert": "‖", r"\|": "‖",
+}
+
+# Functions that should be rendered in upright/roman style
+MATH_FUNCTIONS = [
+    "cos", "sin", "tan", "cot", "sec", "csc",
+    "arccos", "arcsin", "arctan", "arccot",
+    "cosh", "sinh", "tanh", "coth",
+    "log", "ln", "lg", "exp",
+    "lim", "limsup", "liminf",
+    "max", "min", "sup", "inf",
+    "det", "dim", "ker", "arg",
+    "gcd", "lcm", "deg", "hom",
+    "mod", "bmod", "pmod",
 ]
+
+# mathcal character mapping (uppercase only)
+MATHCAL_MAP = {
+    "A": "𝒜", "B": "ℬ", "C": "𝒞", "D": "𝒟", "E": "ℰ", "F": "ℱ",
+    "G": "𝒢", "H": "ℋ", "I": "ℐ", "J": "𝒥", "K": "𝒦", "L": "ℒ",
+    "M": "ℳ", "N": "𝒩", "O": "𝒪", "P": "𝒫", "Q": "𝒬", "R": "ℛ",
+    "S": "𝒮", "T": "𝒯", "U": "𝒰", "V": "𝒱", "W": "𝒲", "X": "𝒳",
+    "Y": "𝒴", "Z": "𝒵",
+}
+
+# mathbb (blackboard bold) character mapping
+MATHBB_MAP = {
+    "A": "𝔸", "B": "𝔹", "C": "ℂ", "D": "𝔻", "E": "𝔼", "F": "𝔽",
+    "G": "𝔾", "H": "ℍ", "I": "𝕀", "J": "𝕁", "K": "𝕂", "L": "𝕃",
+    "M": "𝕄", "N": "ℕ", "O": "𝕆", "P": "ℙ", "Q": "ℚ", "R": "ℝ",
+    "S": "𝕊", "T": "𝕋", "U": "𝕌", "V": "𝕍", "W": "𝕎", "X": "𝕏",
+    "Y": "𝕐", "Z": "ℤ",
+    "0": "𝟘", "1": "𝟙", "2": "𝟚", "3": "𝟛", "4": "𝟜",
+    "5": "𝟝", "6": "𝟞", "7": "𝟟", "8": "𝟠", "9": "𝟡",
+}
+
+
+def _find_brace_group(expr: str, start: int) -> tuple:
+    """Tìm cặp ngoặc nhọn {} cân bằng bắt đầu từ vị trí `start`.
+    Trả về (nội dung bên trong, vị trí kết thúc sau '}'). Nếu không có, trả về (None, start)."""
+    if start >= len(expr) or expr[start] != '{':
+        return None, start
+    depth = 0
+    for i in range(start, len(expr)):
+        if expr[i] == '{':
+            depth += 1
+        elif expr[i] == '}':
+            depth -= 1
+            if depth == 0:
+                return expr[start + 1:i], i + 1
+    return expr[start + 1:], len(expr)
 
 
 def _convert_math_expr(expr: str) -> str:
-    """Chuyển đổi một công thức LaTeX ngắn sang chuỗi HTML."""
-    def frac_repl(match):
-        num, den = match.group(1), match.group(2)
-        return f"<span style='display:inline-block; vertical-align:middle; text-align:center; margin:0 2px;'><span style='border-bottom:1px solid; display:block; padding:0 2px;'>{num}</span><span style='display:block; padding:0 2px;'>{den}</span></span>"
-    
-    expr = re.sub(r'\\frac\{([^{}]+)\}\{([^{}]+)\}', frac_repl, expr)
+    """Chuyển đổi một công thức LaTeX đầy đủ sang chuỗi HTML native cho QTextBrowser."""
+    if not expr or not expr.strip():
+        return ""
 
-    def sqrt_repl(match):
-        content = match.group(1)
-        return f"√<span style='border-top:1px solid; padding-top:1px;'>{content}</span>"
-    
-    expr = re.sub(r'\\sqrt\{([^{}]+)\}', sqrt_repl, expr)
+    # --- Pass 1: Process structural commands that require brace-group parsing ---
+    # Process these iteratively because they can be nested
 
-    for k, v in GREEK_MAP.items():
+    MAX_PASSES = 10
+    for _pass in range(MAX_PASSES):
+        changed = False
+
+        # \frac{num}{den} - fraction
+        m = re.search(r'\\frac\s*\{', expr)
+        if m:
+            num_content, after_num = _find_brace_group(expr, m.end() - 1)
+            if num_content is not None:
+                den_content, after_den = _find_brace_group(expr, after_num)
+                if den_content is not None:
+                    num_html = _convert_math_expr(num_content)
+                    den_html = _convert_math_expr(den_content)
+                    frac_html = (
+                        f"<span style='display:inline-block; vertical-align:middle; "
+                        f"text-align:center; margin:0 2px;'>"
+                        f"<span style='border-bottom:1px solid; display:block; padding:0 2px;'>"
+                        f"{num_html}</span>"
+                        f"<span style='display:block; padding:0 2px;'>{den_html}</span></span>"
+                    )
+                    expr = expr[:m.start()] + frac_html + expr[after_den:]
+                    changed = True
+                    continue
+
+        # \sqrt[n]{content} or \sqrt{content}
+        m = re.search(r'\\sqrt\s*(?:\[([^\]]*)\])?\s*\{', expr)
+        if m:
+            idx_content = m.group(1)
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                inner_html = _convert_math_expr(inner)
+                if idx_content:
+                    sqrt_html = f"<sup style='font-size:0.7em;'>{idx_content}</sup>√<span style='border-top:1px solid; padding:0 1px;'>{inner_html}</span>"
+                else:
+                    sqrt_html = f"√<span style='border-top:1px solid; padding:0 1px;'>{inner_html}</span>"
+                expr = expr[:m.start()] + sqrt_html + expr[after:]
+                changed = True
+                continue
+
+        # \text{...} - text mode
+        m = re.search(r'\\text\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                expr = expr[:m.start()] + inner + expr[after:]
+                changed = True
+                continue
+
+        # \textbf{...} - bold text
+        m = re.search(r'\\textbf\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                expr = expr[:m.start()] + f"<b>{inner}</b>" + expr[after:]
+                changed = True
+                continue
+
+        # \textit{...} - italic text
+        m = re.search(r'\\textit\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                expr = expr[:m.start()] + f"<i>{inner}</i>" + expr[after:]
+                changed = True
+                continue
+
+        # \mathrm{...} / \textrm{...} - roman/upright text in math
+        m = re.search(r'\\(?:mathrm|textrm|operatorname)\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                expr = expr[:m.start()] + f"<span style='font-style:normal;'>{inner}</span>" + expr[after:]
+                changed = True
+                continue
+
+        # \mathbf{...} / \boldsymbol{...} - bold math
+        m = re.search(r'\\(?:mathbf|boldsymbol|bm)\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                inner_html = _convert_math_expr(inner)
+                expr = expr[:m.start()] + f"<b>{inner_html}</b>" + expr[after:]
+                changed = True
+                continue
+
+        # \mathcal{X} - calligraphic
+        m = re.search(r'\\mathcal\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                cal_text = "".join(MATHCAL_MAP.get(c, c) for c in inner)
+                expr = expr[:m.start()] + cal_text + expr[after:]
+                changed = True
+                continue
+
+        # \mathbb{X} - blackboard bold
+        m = re.search(r'\\mathbb\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                bb_text = "".join(MATHBB_MAP.get(c, c) for c in inner)
+                expr = expr[:m.start()] + bb_text + expr[after:]
+                changed = True
+                continue
+
+        # \mathit{...} - italic math (usually default, just strip command)
+        m = re.search(r'\\mathit\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                inner_html = _convert_math_expr(inner)
+                expr = expr[:m.start()] + f"<i>{inner_html}</i>" + expr[after:]
+                changed = True
+                continue
+
+        # \vec{X} - vector with arrow above
+        m = re.search(r'\\vec\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                inner_html = _convert_math_expr(inner)
+                expr = expr[:m.start()] + f"<span style='display:inline-block; text-align:center;'><span style='display:block; font-size:0.6em; line-height:0.8;'>→</span><span>{inner_html}</span></span>" + expr[after:]
+                changed = True
+                continue
+
+        # \hat{X} - hat accent
+        m = re.search(r'\\hat\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                inner_html = _convert_math_expr(inner)
+                expr = expr[:m.start()] + f"<span style='display:inline-block; text-align:center;'><span style='display:block; font-size:0.6em; line-height:0.8;'>^</span><span>{inner_html}</span></span>" + expr[after:]
+                changed = True
+                continue
+
+        # \bar{X} / \overline{X} - bar/overline accent
+        m = re.search(r'\\(?:bar|overline)\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                inner_html = _convert_math_expr(inner)
+                expr = expr[:m.start()] + f"<span style='border-top:1px solid; padding-top:1px;'>{inner_html}</span>" + expr[after:]
+                changed = True
+                continue
+
+        # \underline{X}
+        m = re.search(r'\\underline\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                inner_html = _convert_math_expr(inner)
+                expr = expr[:m.start()] + f"<u>{inner_html}</u>" + expr[after:]
+                changed = True
+                continue
+
+        # \tilde{X} - tilde accent
+        m = re.search(r'\\tilde\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                inner_html = _convert_math_expr(inner)
+                expr = expr[:m.start()] + f"<span style='display:inline-block; text-align:center;'><span style='display:block; font-size:0.6em; line-height:0.8;'>~</span><span>{inner_html}</span></span>" + expr[after:]
+                changed = True
+                continue
+
+        # \dot{X} - dot accent
+        m = re.search(r'\\dot\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                inner_html = _convert_math_expr(inner)
+                expr = expr[:m.start()] + f"<span style='display:inline-block; text-align:center;'><span style='display:block; font-size:0.6em; line-height:0.8;'>·</span><span>{inner_html}</span></span>" + expr[after:]
+                changed = True
+                continue
+
+        # \ddot{X} - double dot
+        m = re.search(r'\\ddot\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                inner_html = _convert_math_expr(inner)
+                expr = expr[:m.start()] + f"<span style='display:inline-block; text-align:center;'><span style='display:block; font-size:0.6em; line-height:0.8;'>¨</span><span>{inner_html}</span></span>" + expr[after:]
+                changed = True
+                continue
+
+        # \boxed{X} - box around expression
+        m = re.search(r'\\boxed\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                inner_html = _convert_math_expr(inner)
+                expr = expr[:m.start()] + f"<span style='border:1px solid; padding:2px 4px;'>{inner_html}</span>" + expr[after:]
+                changed = True
+                continue
+
+        # \color{color}{content}
+        m = re.search(r'\\color\s*\{', expr)
+        if m:
+            color_val, after_color = _find_brace_group(expr, m.end() - 1)
+            if color_val is not None:
+                content, after_content = _find_brace_group(expr, after_color)
+                if content is not None:
+                    inner_html = _convert_math_expr(content)
+                    expr = expr[:m.start()] + f"<span style='color:{color_val};'>{inner_html}</span>" + expr[after_content:]
+                    changed = True
+                    continue
+
+        # \underbrace{X}_{label}
+        m = re.search(r'\\underbrace\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                inner_html = _convert_math_expr(inner)
+                # Check for _{label} after
+                label_m = re.match(r'\s*_\{([^{}]*)\}', expr[after:])
+                if label_m:
+                    label = _convert_math_expr(label_m.group(1))
+                    total_end = after + label_m.end()
+                    expr = expr[:m.start()] + (
+                        f"<span style='display:inline-block; text-align:center;'>"
+                        f"<span style='border-bottom:1px solid; display:block;'>{inner_html}</span>"
+                        f"<span style='display:block; font-size:0.8em;'>{label}</span></span>"
+                    ) + expr[total_end:]
+                else:
+                    expr = expr[:m.start()] + f"<span style='border-bottom:1px solid;'>{inner_html}</span>" + expr[after:]
+                changed = True
+                continue
+
+        # \overbrace{X}^{label}
+        m = re.search(r'\\overbrace\s*\{', expr)
+        if m:
+            inner, after = _find_brace_group(expr, m.end() - 1)
+            if inner is not None:
+                inner_html = _convert_math_expr(inner)
+                label_m = re.match(r'\s*\^\{([^{}]*)\}', expr[after:])
+                if label_m:
+                    label = _convert_math_expr(label_m.group(1))
+                    total_end = after + label_m.end()
+                    expr = expr[:m.start()] + (
+                        f"<span style='display:inline-block; text-align:center;'>"
+                        f"<span style='display:block; font-size:0.8em;'>{label}</span>"
+                        f"<span style='border-top:1px solid; display:block;'>{inner_html}</span></span>"
+                    ) + expr[total_end:]
+                else:
+                    expr = expr[:m.start()] + f"<span style='border-top:1px solid;'>{inner_html}</span>" + expr[after:]
+                changed = True
+                continue
+
+        if not changed:
+            break
+
+    # --- Pass 2: \begin{cases}...\end{cases} environment ---
+    cases_pattern = re.compile(r'\\begin\{cases\}(.*?)\\end\{cases\}', re.DOTALL)
+    def cases_repl(m):
+        body = m.group(1).strip()
+        rows = re.split(r'\\\\', body)
+        html_rows = []
+        for row in rows:
+            row = row.strip()
+            if not row:
+                continue
+            parts = row.split('&')
+            expr_part = _convert_math_expr(parts[0].strip()) if parts else ""
+            cond_part = _convert_math_expr(parts[1].strip()) if len(parts) > 1 else ""
+            html_rows.append(
+                f"<tr><td style='padding:2px 8px 2px 0;'>{expr_part}</td>"
+                f"<td style='padding:2px 0;'>{cond_part}</td></tr>"
+            )
+        return (
+            f"<span style='display:inline-block; vertical-align:middle; border-left:2px solid; padding-left:6px;'>"
+            f"<table style='border-collapse:collapse;'>{''.join(html_rows)}</table></span>"
+        )
+    expr = cases_pattern.sub(cases_repl, expr)
+
+    # --- Pass 2b: \begin{aligned}...\end{aligned} or \begin{align}...\end{align} ---
+    aligned_pattern = re.compile(r'\\begin\{(?:aligned|align)\*?\}(.*?)\\end\{(?:aligned|align)\*?\}', re.DOTALL)
+    def aligned_repl(m):
+        body = m.group(1).strip()
+        rows = re.split(r'\\\\', body)
+        html_rows = []
+        for row in rows:
+            row = row.strip()
+            if not row:
+                continue
+            parts = row.split('&')
+            cells = [f"<td style='padding:2px 4px;'>{_convert_math_expr(p.strip())}</td>" for p in parts]
+            html_rows.append(f"<tr>{''.join(cells)}</tr>")
+        return f"<table style='border-collapse:collapse; margin:4px 0;'>{''.join(html_rows)}</table>"
+    expr = aligned_pattern.sub(aligned_repl, expr)
+
+    # --- Pass 2c: \begin{matrix/pmatrix/bmatrix}...\end{...} ---
+    matrix_pattern = re.compile(r'\\begin\{(matrix|pmatrix|bmatrix|vmatrix)\}(.*?)\\end\{\1\}', re.DOTALL)
+    def matrix_repl(m):
+        mtype = m.group(1)
+        body = m.group(2).strip()
+        rows = re.split(r'\\\\', body)
+        html_rows = []
+        for row in rows:
+            row = row.strip()
+            if not row:
+                continue
+            cells = row.split('&')
+            html_cells = [f"<td style='padding:2px 6px; text-align:center;'>{_convert_math_expr(c.strip())}</td>" for c in cells]
+            html_rows.append(f"<tr>{''.join(html_cells)}</tr>")
+        table = f"<table style='border-collapse:collapse; display:inline-table; vertical-align:middle;'>{''.join(html_rows)}</table>"
+        if mtype == "pmatrix":
+            return f"(<span style='display:inline-block; vertical-align:middle;'>{table}</span>)"
+        elif mtype == "bmatrix":
+            return f"[<span style='display:inline-block; vertical-align:middle;'>{table}</span>]"
+        elif mtype == "vmatrix":
+            return f"|<span style='display:inline-block; vertical-align:middle;'>{table}</span>|"
+        return table
+    expr = matrix_pattern.sub(matrix_repl, expr)
+
+    # --- Pass 3: Greek letters (replace longer names first to avoid partial matches) ---
+    sorted_greek = sorted(GREEK_MAP.items(), key=lambda x: -len(x[0]))
+    for k, v in sorted_greek:
         expr = re.sub(re.escape(k) + r'(?![a-zA-Z])', v, expr)
 
-    for k, v in MATH_OPS:
+    # --- Pass 4: Math symbols (replace longer names first) ---
+    sorted_symbols = sorted(MATH_SYMBOLS.items(), key=lambda x: -len(x[0]))
+    for k, v in sorted_symbols:
         expr = re.sub(re.escape(k) + r'(?![a-zA-Z])', v, expr)
 
-    expr = re.sub(r'\^\{([^{}]+)\}', r'<sup>\1</sup>', expr)
-    expr = re.sub(r'\^([0-9a-zA-Z+-]+)', r'<sup>\1</sup>', expr)
-    expr = re.sub(r'_\{([^{}]+)\}', r'<sub>\1</sub>', expr)
-    expr = re.sub(r'_([0-9a-zA-Z+-]+)', r'<sub>\1</sub>', expr)
+    # --- Pass 5: Named math functions \cos, \sin, etc. ---
+    sorted_funcs = sorted(MATH_FUNCTIONS, key=lambda x: -len(x))
+    for func in sorted_funcs:
+        expr = re.sub(r'\\' + func + r'(?![a-zA-Z])',
+                       f"<span style='font-style:normal;'>{func}</span>", expr)
+
+    # --- Pass 6: Superscripts and subscripts ---
+    # ^{...} with brace groups
+    expr = re.sub(r'\^\{([^{}]+)\}', lambda m: f"<sup>{_convert_math_expr(m.group(1))}</sup>", expr)
+    # ^single_char (digit, letter, +, -)
+    expr = re.sub(r'\^([0-9a-zA-Zα-ωΑ-Ω+\-])', r'<sup>\1</sup>', expr)
+    # _{...} with brace groups
+    expr = re.sub(r'_\{([^{}]+)\}', lambda m: f"<sub>{_convert_math_expr(m.group(1))}</sub>", expr)
+    # _single_char
+    expr = re.sub(r'_([0-9a-zA-Zα-ωΑ-Ω+\-])', r'<sub>\1</sub>', expr)
+
+    # --- Pass 7: Cleanup remaining LaTeX artifacts ---
+    # \left and \right delimiters (just remove the command, keep the delimiter)
+    expr = re.sub(r'\\left\s*([(\[|.{\\])', r'\1', expr)
+    expr = re.sub(r'\\right\s*([)\]|.}\\])', r'\1', expr)
+    expr = re.sub(r'\\left\s*\\([{}|])', lambda m: {'|': '|', '{': '{', '}': '}'}.get(m.group(1), m.group(1)), expr)
+    expr = re.sub(r'\\right\s*\\([{}|])', lambda m: {'|': '|', '{': '{', '}': '}'}.get(m.group(1), m.group(1)), expr)
+    # \left. and \right. (invisible delimiter)
+    expr = expr.replace(r'\left.', '').replace(r'\right.', '')
+
+    # \! (negative thin space) — remove
+    expr = expr.replace(r'\!', '')
+
+    # Any remaining \commandname{content} — just show the content
+    expr = re.sub(r'\\[a-zA-Z]+\{([^{}]*)\}', r'\1', expr)
+
+    # Any remaining unknown \command — remove the backslash
     expr = re.sub(r'\\([a-zA-Z]+)', r'\1', expr)
+
+    # Clean up stray braces that remain
+    expr = expr.replace('{', '').replace('}', '')
+
+    # Clean up multiple spaces
+    expr = re.sub(r'  +', ' ', expr)
+
     return expr.strip()
 
 
 def render_latex_math(text: str) -> str:
-    """Tự động phát hiện và chuyển đổi toàn bộ công thức LaTeX $...$ và $$...$$ sang HTML native."""
+    """Tự động phát hiện và chuyển đổi toàn bộ công thức LaTeX sang HTML native.
+    Hỗ trợ: $...$, $$...$$, \\(...\\), \\[...\\]"""
     if not text:
         return ""
-    
+
+    MATH_STYLE_INLINE = (
+        "font-family:\"Cambria Math\", \"Times New Roman\", serif; "
+        "font-size:14px; color:#0ea5e9; font-weight:600;"
+    )
+    MATH_STYLE_DISPLAY = (
+        "text-align:center; margin:10px 0; "
+        "font-family:\"Cambria Math\", \"Times New Roman\", serif; "
+        "font-size:15px; color:#0ea5e9; font-weight:bold;"
+    )
+
+    # Display math: $$...$$ (multiline)
     def display_repl(match):
         inner = match.group(1)
         conv = _convert_math_expr(inner)
-        return f"<div style='text-align:center; margin:10px 0; font-family:\"Cambria Math\", \"Times New Roman\", serif; font-size:15px; color:#0ea5e9; font-weight:bold;'>{conv}</div>"
-    
+        return f"<div style='{MATH_STYLE_DISPLAY}'>{conv}</div>"
+
     text = re.sub(r'\$\$(.*?)\$\$', display_repl, text, flags=re.DOTALL)
 
+    # Display math: \[...\] (multiline)
+    text = re.sub(r'\\\[(.*?)\\\]', display_repl, text, flags=re.DOTALL)
+
+    # Inline math: $...$
     def inline_repl(match):
         inner = match.group(1)
         conv = _convert_math_expr(inner)
-        return f"<span style='font-family:\"Cambria Math\", \"Times New Roman\", serif; font-size:14px; color:#0ea5e9; font-weight:600;'>{conv}</span>"
+        return f"<span style='{MATH_STYLE_INLINE}'>{conv}</span>"
 
     text = re.sub(r'\$([^\$\n]+?)\$', inline_repl, text)
+
+    # Inline math: \(...\)
+    text = re.sub(r'\\\((.+?)\\\)', inline_repl, text)
+
     return text
 
 
