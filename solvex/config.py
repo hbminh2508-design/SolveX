@@ -50,6 +50,10 @@ DEFAULTS = {
     "theme": "dark",                 # "dark" hoặc "light"
     "enable_tts": True,              # Cho phép tính năng đọc đáp án bằng giọng nói
     "auto_tts": False,               # Tự động phát âm thanh đọc đáp án khi AI giải xong
+    "model_mode": "standard",        # "standard", "turbo", hoặc "turbo_plus"
+    "use_separate_api_key_2": False, # False: Dùng chung API key 1, True: Dùng API key 2 riêng
+    "api_key_2": "",                 # API Key riêng cho Model 2
+    "model_2": "gemini-2.5-pro",     # Tên Model 2 (nhập y hệt Model 1, e.g. gemini-2.5-pro)
 }
 
 

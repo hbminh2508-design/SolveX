@@ -44,7 +44,7 @@ from PyQt6.QtWidgets import (
 
 from . import capture, fluent, style
 from .config import Config
-from .gemini import GeminiClient, audio_part, image_part, text_part
+from .gemini import DualGeminiClient, GeminiClient, audio_part, image_part, text_part
 from .history import HistoryManager
 from .i18n import i18n
 from .icons import IconFactory
@@ -340,23 +340,35 @@ def _convert_math_expr(expr: str) -> str:
                 changed = True
                 continue
 
-        # \vec{X} - vector with arrow above
+        # \vec{X} - vector with arrow directly ABOVE symbol
         m = re.search(r'\\vec\s*\{', expr)
         if m:
             inner, after = _find_brace_group(expr, m.end() - 1)
             if inner is not None:
                 inner_html = _convert_math_expr(inner)
-                expr = expr[:m.start()] + f"<span style='display:inline-block; text-align:center;'><span style='display:block; font-size:0.6em; line-height:0.8;'>→</span><span>{inner_html}</span></span>" + expr[after:]
+                vec_table = (
+                    f"<table style='display:inline-table; border-collapse:collapse; vertical-align:middle; text-align:center; margin:0 1px;'>"
+                    f"<tr><td style='padding:0; font-size:9px; line-height:8px; text-align:center; color:#0ea5e9;'>→</td></tr>"
+                    f"<tr><td style='padding:0; text-align:center;'>{inner_html}</td></tr>"
+                    f"</table>"
+                )
+                expr = expr[:m.start()] + vec_table + expr[after:]
                 changed = True
                 continue
 
-        # \hat{X} - hat accent
+        # \hat{X} - hat accent directly ABOVE symbol
         m = re.search(r'\\hat\s*\{', expr)
         if m:
             inner, after = _find_brace_group(expr, m.end() - 1)
             if inner is not None:
                 inner_html = _convert_math_expr(inner)
-                expr = expr[:m.start()] + f"<span style='display:inline-block; text-align:center;'><span style='display:block; font-size:0.6em; line-height:0.8;'>^</span><span>{inner_html}</span></span>" + expr[after:]
+                hat_table = (
+                    f"<table style='display:inline-table; border-collapse:collapse; vertical-align:middle; text-align:center; margin:0 1px;'>"
+                    f"<tr><td style='padding:0; font-size:9px; line-height:8px; text-align:center; color:#0ea5e9;'>^</td></tr>"
+                    f"<tr><td style='padding:0; text-align:center;'>{inner_html}</td></tr>"
+                    f"</table>"
+                )
+                expr = expr[:m.start()] + hat_table + expr[after:]
                 changed = True
                 continue
 
@@ -1706,6 +1718,26 @@ class MainWindow(QMainWindow):
         api_card = QFrame()
         api_card.setObjectName("Card")
         a_layout = QVBoxLayout(api_card)
+        a_layout.setSpacing(10)
+
+        # Chế độ chạy Model AI (Standard / Turbo / Turbo+)
+        a_layout.addWidget(QLabel("⚡ Chế độ AI (Model Execution Mode):"))
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItem("⚡ Standard (1 Model AI — Tiêu Chuẩn)", "standard")
+        self.mode_combo.addItem("🔥 Turbo (Song Song 2 Model AI Đối Chiếu)", "turbo")
+        self.mode_combo.addItem("🚀 Turbo+ (Dual-Model AI Kiểm Chứng & Tối Ưu Tận Cùng)", "turbo_plus")
+        self.mode_combo.currentIndexChanged.connect(self._on_model_mode_changed)
+        a_layout.addWidget(self.mode_combo)
+
+        line1 = QFrame()
+        line1.setFrameShape(QFrame.Shape.HLine)
+        line1.setFrameShadow(QFrame.Shadow.Sunken)
+        a_layout.addWidget(line1)
+
+        # Cấu hình Model 1 (Model Chính)
+        lbl_m1 = QLabel("🤖 Cấu Hình Model 1 (Model AI Chính):")
+        lbl_m1.setStyleSheet("font-weight: bold;")
+        a_layout.addWidget(lbl_m1)
 
         a_layout.addWidget(QLabel(i18n.t("st_api_key")))
         key_row = QHBoxLayout()
@@ -1727,6 +1759,49 @@ class MainWindow(QMainWindow):
         a_layout.addWidget(QLabel(i18n.t("st_model")))
         self.model_input = QLineEdit()
         a_layout.addWidget(self.model_input)
+
+        line2 = QFrame()
+        line2.setFrameShape(QFrame.Shape.HLine)
+        line2.setFrameShadow(QFrame.Shadow.Sunken)
+        a_layout.addWidget(line2)
+
+        # Cấu hình Model 2 (Dùng cho Turbo / Turbo+)
+        self.lbl_m2 = QLabel("🤖 Cấu Hình Model 2 (Dùng Cho Chế Độ Turbo & Turbo+):")
+        self.lbl_m2.setStyleSheet("font-weight: bold; color: #0ea5e9;")
+        a_layout.addWidget(self.lbl_m2)
+
+        key2_opt_layout = QHBoxLayout()
+        self.key2_same_rad = QRadioButton("Dùng chung API Key cũ với Model 1")
+        self.key2_sep_rad = QRadioButton("Dùng API Key riêng biệt cho Model 2")
+        self.key2_same_rad.setChecked(True)
+        self.key2_same_rad.toggled.connect(self._toggle_key2_enabled)
+        self.key2_sep_rad.toggled.connect(self._toggle_key2_enabled)
+        key2_opt_layout.addWidget(self.key2_same_rad)
+        key2_opt_layout.addWidget(self.key2_sep_rad)
+        key2_opt_layout.addStretch()
+        a_layout.addLayout(key2_opt_layout)
+
+        a_layout.addWidget(QLabel("API Key riêng biệt cho Model 2:"))
+        key2_row = QHBoxLayout()
+        self.key2_input = QLineEdit()
+        self.key2_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.key2_input.setPlaceholderText("Dán API Key riêng cho Model 2 tại đây...")
+        key2_row.addWidget(self.key2_input, 1)
+
+        self.show_key2 = QPushButton("Hiện")
+        self.show_key2.setCheckable(True)
+        self.show_key2.toggled.connect(self._toggle_key2_visibility)
+        key2_row.addWidget(self.show_key2)
+
+        self.test_api2_btn = QPushButton("Kiểm Tra Model 2")
+        self.test_api2_btn.clicked.connect(self.on_test_api_key_2)
+        key2_row.addWidget(self.test_api2_btn)
+        a_layout.addLayout(key2_row)
+
+        a_layout.addWidget(QLabel("Tên Model 2 (Nhập y hệt cách làm như model cũ, e.g. gemini-2.5-pro):"))
+        self.model2_input = QLineEdit()
+        self.model2_input.setPlaceholderText("gemini-2.5-pro")
+        a_layout.addWidget(self.model2_input)
 
         box.addWidget(api_card)
 
@@ -1935,6 +2010,22 @@ class MainWindow(QMainWindow):
         self.enable_tts_check.setChecked(bool(self.config.get("enable_tts", True)))
         self.auto_tts_check.setChecked(bool(self.config.get("auto_tts", False)))
 
+        model_mode = self.config.get("model_mode", "standard")
+        idx_m = self.mode_combo.findData(model_mode)
+        if idx_m >= 0:
+            self.mode_combo.setCurrentIndex(idx_m)
+
+        use_sep = bool(self.config.get("use_separate_api_key_2", False))
+        if use_sep:
+            self.key2_sep_rad.setChecked(True)
+        else:
+            self.key2_same_rad.setChecked(True)
+
+        self.key2_input.setText(self.config.get("api_key_2", ""))
+        self.model2_input.setText(self.config.get("model_2", "gemini-2.5-pro"))
+        self._toggle_key2_enabled()
+        self._on_model_mode_changed()
+
     def _on_source_changed(self):
         if self.monitor_combo.currentData() == -1:
             self.config.set("capture_mode", "region")
@@ -1947,6 +2038,27 @@ class MainWindow(QMainWindow):
             QLineEdit.EchoMode.Normal if shown else QLineEdit.EchoMode.Password
         )
         self.show_key.setText(i18n.t("btn_hide") if shown else i18n.t("btn_show"))
+
+    def _toggle_key2_enabled(self):
+        use_sep = self.key2_sep_rad.isChecked()
+        self.key2_input.setEnabled(use_sep)
+        self.show_key2.setEnabled(use_sep)
+
+    def _toggle_key2_visibility(self, shown: bool):
+        self.key2_input.setEchoMode(
+            QLineEdit.EchoMode.Normal if shown else QLineEdit.EchoMode.Password
+        )
+        self.show_key2.setText("Ẩn" if shown else "Hiện")
+
+    def _on_model_mode_changed(self):
+        mode = self.mode_combo.currentData()
+        is_dual = mode in ("turbo", "turbo_plus")
+        self.lbl_m2.setEnabled(is_dual)
+        self.key2_same_rad.setEnabled(is_dual)
+        self.key2_sep_rad.setEnabled(is_dual)
+        self.model2_input.setEnabled(is_dual)
+        self.test_api2_btn.setEnabled(is_dual)
+        self._toggle_key2_enabled()
 
     def on_language_changed(self, lang_code: str):
         self._build_menu_bar()
@@ -1981,6 +2093,11 @@ class MainWindow(QMainWindow):
 
         self.config.set("api_key", self.key_input.text().strip())
         self.config.set("model", self.model_input.text().strip())
+        self.config.set("model_mode", self.mode_combo.currentData())
+        self.config.set("use_separate_api_key_2", self.key2_sep_rad.isChecked())
+        self.config.set("api_key_2", self.key2_input.text().strip())
+        self.config.set("model_2", self.model2_input.text().strip() or "gemini-2.5-pro")
+
         self.config.set("hide_window_on_capture", self.hide_check.isChecked())
         self.config.set("use_loopback", self.loopback_check.isChecked())
         self.config.set("prompt_normal", self.prompt_normal_edit.toPlainText().strip())
@@ -1989,6 +2106,34 @@ class MainWindow(QMainWindow):
         self._on_source_changed()
         self.config.save()
         self.status.showMessage("Đã lưu cài đặt thành công.", 4000)
+
+    def on_test_api_key_2(self):
+        use_sep = self.key2_sep_rad.isChecked()
+        key = self.key2_input.text().strip() if use_sep else self.key_input.text().strip()
+        model = self.model2_input.text().strip() or "gemini-2.5-pro"
+        if not key:
+            self._error("Lỗi Model 2", "Vui lòng nhập API Key cho Model 2 trước khi kiểm tra.")
+            return
+
+        self.test_api2_btn.setEnabled(False)
+        self.status.showMessage("Đang kiểm tra kết nối API Model 2...")
+
+        client = GeminiClient(key, model)
+        self.test_worker_2 = TestApiWorker(client)
+        self.test_worker_2.succeeded.connect(
+            lambda txt: (
+                self.test_api2_btn.setEnabled(True),
+                QMessageBox.information(self, "SolveX", f"Kết nối Model 2 ({model}) thành công!"),
+                self.status.showMessage("Kết nối Model 2 thành công!", 5000),
+            )
+        )
+        self.test_worker_2.failed.connect(
+            lambda err: (
+                self.test_api2_btn.setEnabled(True),
+                self._error("Lỗi API Model 2", f"Kết nối Model 2 thất bại: {err}"),
+            )
+        )
+        self.test_worker_2.start()
 
     def on_test_api_key(self):
         key = self.key_input.text().strip()
@@ -2139,12 +2284,24 @@ class MainWindow(QMainWindow):
         except Exception as exc:
             self._error("Lỗi Khởi Chạy Builder", str(exc))
 
-    def _client(self) -> GeminiClient:
-        return GeminiClient(
-            self.key_input.text().strip(),
-            self.model_input.text().strip(),
-            float(self.config.get("temperature", 0.2)),
-        )
+    def _client(self) -> DualGeminiClient:
+        key1 = self.key_input.text().strip() or self.config.get("api_key", "").strip()
+        model1 = self.model_input.text().strip() or self.config.get("model", "gemini-3.5-flash-lite").strip()
+        temp = float(self.config.get("temperature", 0.2))
+        client1 = GeminiClient(key1, model1, temp)
+
+        mode = self.mode_combo.currentData() if hasattr(self, "mode_combo") else self.config.get("model_mode", "standard")
+
+        if mode in ("turbo", "turbo_plus"):
+            use_sep = self.key2_sep_rad.isChecked() if hasattr(self, "key2_sep_rad") else self.config.get("use_separate_api_key_2", False)
+            key2_val = self.key2_input.text().strip() if hasattr(self, "key2_input") else self.config.get("api_key_2", "")
+            key2 = key2_val if use_sep and key2_val else key1
+            model2_val = self.model2_input.text().strip() if hasattr(self, "model2_input") else self.config.get("model_2", "gemini-2.5-pro")
+            model2 = model2_val or "gemini-2.5-pro"
+            client2 = GeminiClient(key2, model2, temp)
+            return DualGeminiClient(client1, client2, mode=mode)
+
+        return DualGeminiClient(client1, None, mode="standard")
 
     # ------------------ Ẩn Cửa Sổ Khi Chụp Màn Hình ------------------
     def on_pick_region(self):

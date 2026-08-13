@@ -1,9 +1,20 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.9.0.206d70e"
+APP_VERSION = "1.10.0"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.10.0",
+        "2026-08-13",
+        [
+            "Cập nhật định dạng hiển thị ký hiệu vector (\\vec{X}): Đảm bảo mũi tên (→) luôn được căn giữa trực tiếp PHÍA TRÊN ký hiệu chữ, không bị nằm lệch sang bên trái.",
+            "Tích hợp hệ thống AI Đa Model (Dual-Model AI Engine): Hỗ trợ chạy đồng thời 2 AI Models (Chế độ Turbo & Turbo+).",
+            "Chế độ Turbo: Gọi song song cả 2 Model AI và đối chiếu, tổng hợp lời giải chính xác nhất.",
+            "Chế độ Turbo+: Model 1 tạo bản thảo lời giải -> Model 2 (thông minh hơn) kiểm chứng, sửa lỗi toán/lý và tối ưu trình bày.",
+            "Tùy chọn cấu hình Model 2 linh hoạt trong Cài đặt: Cho phép dùng chung API Key cũ hoặc nhập API Key riêng biệt cho Model 2, nhập tên Model 2 tương tự như Model 1 (e.g., gemini-2.5-pro).",
+        ],
+    ),
     (
         "1.9.0.206d70e",
         "2026-08-13",
