@@ -1,9 +1,21 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.12.0.e863de1"
+APP_VERSION = "1.13.0"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.13.0",
+        "2026-08-13",
+        [
+            "Cập nhật hiển thị phân số (\\frac{x}{y} và x/y): Tự động hiển thị dạng số trên (tử số) & số dưới (mẫu số) với vạch phân số nằm ngang, 100% inline không bị lỗi nhảy dòng.",
+            "Tích hợp bộ ký hiệu toán học chuẩn mực 200+ symbols (Đầy đủ bảng chữ cái Hy Lạp, vi tích phân, đại số tuyến tính, lý thuyết tập hợp, hình học, logic và quan hệ toán học).",
+            "Nâng cấp định dạng câu trả lời chuẩn mực như Gemini Web: Phân chia cấu trúc bài giải mạch lạc, phân tích dạng bài, công thức áp dụng và đóng khung/in đậm kết quả.",
+            "Cập nhật hệ thống Font chữ tối ưu (Segoe UI Symbol, Cambria Math): Hiển thị dấu câu Tiếng Việt và các ký hiệu toán học đẹp mắt, sắc nét và hài hòa nhất.",
+            "Vá các lỗ hổng bảo mật mức độ cao (High-Severity Security Hardening): Chống Path Traversal, bảo vệ bộ nhớ API Key, ngăn ngừa Command Injection và chống XSS.",
+            "Cải thiện UI/UX toàn diện: Bo góc mượt mà WinUI 3 Fluent, hiệu ứng hover, thẻ thông tin sắc nét và thanh công cụ nổi tối ưu.",
+        ],
+    ),
     (
         "1.12.0.e863de1",
         "2026-08-13",

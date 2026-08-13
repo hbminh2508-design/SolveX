@@ -147,17 +147,34 @@ MATH_SYMBOLS = {
     r"\infty": "∞", r"\partial": "∂", r"\nabla": "∇",
     r"\forall": "∀", r"\exists": "∃", r"\nexists": "∄",
     r"\emptyset": "∅", r"\varnothing": "∅",
-    r"\degree": "°", r"\circ": "°",
-    r"\angle": "∠", r"\measuredangle": "∡",
-    r"\triangle": "△", r"\square": "□",
-    r"\perp": " ⊥ ", r"\parallel": " ∥ ",
-    r"\hbar": "ℏ", r"\ell": "ℓ", r"\Re": "ℜ", r"\Im": "ℑ",
-    r"\aleph": "ℵ",
-    r"\neg": "¬", r"\lnot": "¬",
-    r"\wedge": " ∧ ", r"\land": " ∧ ",
-    r"\vee": " ∨ ", r"\lor": " ∨ ",
+    # Additional Binary operators
+    r"\amalg": " ∯ ", r"\dagger": " † ", r"\ddagger": " ‡ ",
+    r"\lozenge": " ◊ ", r"\bigtriangleup": " △ ", r"\bigtriangledown": " ▽ ",
+    r"\ominus": " ⊖ ", r"\oslash": " ☩ ", r"\odot": " ⊙ ", r"\bigcirc": " ◯ ",
+    r"\wr": " ≀ ", r"\sqcap": " ⊓ ", r"\sqcup": " ⊔ ",
+    # Additional Relations
+    r"\asymp": " ≍ ", r"\doteq": " ≐ ", r"\frown": " ⌢ ", r"\smile": " ⌣ ",
+    r"\prec": " ≺ ", r"\succ": " ≻ ", r"\preceq": " ⪯ ", r"\succeq": " ⪰ ",
+    r"\sqsubset": " ⊏ ", r"\sqsupset": " ⊐ ", r"\sqsubseteq": " ⊑ ", r"\sqsupseteq": " ⊒ ",
+    r"\nle": " ≰ ", r"\nleq": " ≰ ", r"\nge": " ≱ ", r"\ngeq": " ≱ ",
+    r"\nsubset": " ⊄ ", r"\nsubseteq": " ⊈ ", r"\nsupset": " ⊅ ", r"\nsupseteq": " ⊉ ",
+    # Additional Calculus & Vector Symbols
+    r"\oiint": "∯", r"\ooint": "∰", r"\grad": "∇", r"\curl": "∇×", r"\laplacian": "∇²",
+    r"\hbar": "ℏ", r"\ell": "ℓ", r"\Re": "ℜ", r"\Im": "ℑ", r"\aleph": "ℵ", r"\beth": "ℶ",
+    r"\complement": "∁", r"\backprime": "‵", r"\varprime": "′",
+    r"\ang": "∠", r"\sphericalangle": "∢", r"\diameter": "⌀",
+    # Logic & Quantifiers
+    r"\neg": "¬", r"\lnot": "¬", r"\vdash": " ⊢ ", r"\models": " ⊨ ", r"\bot": " ⊥ ", r"\top": " ⊤ ",
+    r"\wedge": " ∧ ", r"\land": " ∧ ", r"\vee": " ∨ ", r"\lor": " ∨ ",
     r"\ldots": "…", r"\cdots": "⋯", r"\vdots": "⋮", r"\ddots": "⋱", r"\dots": "…",
     r"\therefore": "∴", r"\because": "∵",
+    # Additional Arrow types
+    r"\longleftarrow": " ⟵ ", r"\longrightaarrow": " ⟶ ", r"\longleftrightarrow": " ⟷ ",
+    r"\Longleftarrow": " ⟸ ", r"\Longrightarrow": " ⟹ ", r"\Longleftrightarrow": " ⟺ ",
+    r"\nearrow": " ↗ ", r"\searrow": " ↘ ", r"\swarrow": " ↙ ", r"\nwarrow": " ↖ ",
+    r"\hookrightarrow": " ↪ ", r"\hookleftarrow": " ↩ ",
+    r"\rightharpoonup": " ⇀ ", r"\rightharpoondown": " ⇁ ",
+    r"\leftharpoonup": " ↼ ", r"\leftharpoondown": " ⇂ ",
     # Spacing & decorators
     r"\quad": "  ", r"\qquad": "    ",
     r"\,": " ", r"\;": " ", r"\:": " ", r"\ ": " ",
@@ -1189,8 +1206,11 @@ class BusyIndicator(QWidget):
 # --------------------------------------------------------------------------
 class MainWindow(QMainWindow):
     SYSTEM_INSTRUCTION = (
-        "Bạn là trợ lý học tập SolveX. Giải thích từng bước rõ ràng, chính xác. "
-        "Dùng Markdown để trình bày."
+        "Bạn là Trợ lý Học tập Thông minh SolveX (trình bày chuẩn mực như Gemini Web). "
+        "Hãy giải bài tập chi tiết, chuẩn xác, rõ ràng theo từng bước:\n"
+        "1. Trình bày bài giải mạch lạc, phân chia dạng bài, công thức áp dụng và các bước tính toán.\n"
+        "2. Sử dụng ký hiệu toán học chuẩn mực (ví dụ: \\vec{v}, \\frac{a}{b}, \\alpha, \\beta, \\sum, \\int).\n"
+        "3. In đậm và kết luận đáp số rõ ràng ở cuối bài."
     )
 
     def __init__(self):

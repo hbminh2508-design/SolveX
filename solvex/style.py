@@ -78,7 +78,7 @@ def get_palette(theme: str) -> dict:
     return LIGHT_PALETTE if theme == "light" else DARK_PALETTE
 
 
-FONT_FAMILY = '"Segoe UI", "Segoe UI Variable Text", "Arial", sans-serif'
+FONT_FAMILY = '"Segoe UI", "Segoe UI Variable Text", "Segoe UI Symbol", "Cambria Math", "Arial", sans-serif'
 
 
 def get_stylesheet(theme: str = "dark") -> str:
