@@ -42,6 +42,43 @@ from solvex.updater import (
 from solvex.version import APP_VERSION, CHANGELOG, changelog_markdown
 
 
+def find_project_dir() -> str:
+    """Tìm thư mục gốc dự án chứa file solvex_main.spec hoặc solvex.spec.
+    Tự động xử lý chính xác khi chạy từ file .py hoặc khi đã đóng gói thành update.exe (PyInstaller).
+    """
+    candidates = []
+
+    # 1. Thư mục chứa file thực thi (khi chạy dưới dạng update.exe)
+    if getattr(sys, "frozen", False):
+        exe_dir = os.path.dirname(sys.executable)
+        candidates.append(exe_dir)
+        candidates.append(os.path.dirname(exe_dir))  # Nếu update.exe nằm trong dist/
+
+    # 2. Thư mục làm việc hiện tại (cwd)
+    candidates.append(os.getcwd())
+
+    # 3. Thư mục của script
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        candidates.append(script_dir)
+        candidates.append(os.path.dirname(script_dir))
+    except Exception:
+        pass
+
+    # Duyệt qua các thư mục ứng viên để tìm thư mục gốc dự án
+    for c in candidates:
+        if not c or not os.path.exists(c):
+            continue
+        if (
+            os.path.exists(os.path.join(c, "solvex_main.spec"))
+            or os.path.exists(os.path.join(c, "solvex.spec"))
+            or os.path.exists(os.path.join(c, "main.py"))
+        ):
+            return c
+
+    return candidates[0] if candidates else os.getcwd()
+
+
 class InstallMainWorker(QThread):
     """Worker đóng gói & cài đặt ứng dụng chính SolveX.exe (chỉ build SolveX.exe, không build lại update.exe để tránh lỗi khóa file)."""
 
@@ -161,7 +198,7 @@ class UpdaterWindow(QMainWindow):
         QTimer.singleShot(300, self.start_check_update)
 
     def _init_ui(self):
-        self.setWindowTitle(f"SolveX Updater v{self.current_ver} — Trình Cập Nhật Độc Lập")
+        self.setWindowTitle("SolveX Updater — Trình Cập Nhật Độc Lập")
         self.setMinimumSize(800, 640)
         self.resize(840, 680)
 
@@ -590,7 +627,7 @@ class UpdaterWindow(QMainWindow):
         self.install_progress_bar.setValue(0)
         self.lbl_install_info.setText("Đang khởi tạo tiến trình cài đặt SolveX.exe...")
 
-        project_dir = os.path.dirname(os.path.abspath(__file__))
+        project_dir = find_project_dir()
 
         self.install_worker = InstallMainWorker(project_dir)
         self.install_worker.progress_signal.connect(self._on_install_progress)
