@@ -29,11 +29,12 @@ def main():
     project_dir = find_project_dir()
     print(f"[+] Project Directory: {project_dir}")
 
-    # 1. Kill old SolveX.exe to release file lock
-    print("[+] Closing running SolveX.exe instances to release file locks...")
+    # 1. Kill old SolveX.exe and update.exe to release file lock
+    print("[+] Closing running SolveX.exe and update.exe instances to release file locks...")
     try:
         if sys.platform == "win32":
             subprocess.run(["taskkill", "/F", "/IM", "SolveX.exe"], capture_output=True, text=True)
+            subprocess.run(["taskkill", "/F", "/IM", "update.exe"], capture_output=True, text=True)
     except Exception:
         pass
 

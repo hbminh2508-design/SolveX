@@ -25,6 +25,47 @@ GITHUB_API_COMMITS = f"https://api.github.com/repos/{TARGET_GITHUB_REPO}/commits
 GITHUB_API_TAGS = f"https://api.github.com/repos/{TARGET_GITHUB_REPO}/tags"
 
 
+def launch_standalone_updater(current_version: str = None) -> bool:
+    """Khởi chạy ứng dụng update.exe (hoặc python update.py) trong tiến trình riêng độc lập với SolveX."""
+    if not current_version:
+        current_version = APP_VERSION
+
+    candidates = [
+        os.getcwd(),
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        r"c:\Users\hoang\Downloads\SolveX-main\SolveX-main",
+    ]
+    project_dir = candidates[0]
+    for p in candidates:
+        if os.path.exists(os.path.join(p, "update.py")) or os.path.exists(os.path.join(p, "dist", "update.exe")):
+            project_dir = p
+            break
+
+    updater_exe = os.path.join(project_dir, "dist", "update.exe")
+    if not os.path.exists(updater_exe):
+        updater_exe = os.path.join(project_dir, "update.exe")
+
+    python_exe = os.path.join(project_dir, ".venv", "Scripts", "python.exe")
+    update_py = os.path.join(project_dir, "update.py")
+
+    cmd = None
+    if os.path.exists(updater_exe):
+        cmd = [updater_exe, "--version", current_version]
+    elif os.path.exists(python_exe) and os.path.exists(update_py):
+        cmd = [python_exe, update_py, "--version", current_version]
+    elif os.path.exists(update_py):
+        cmd = [sys.executable, update_py, "--version", current_version]
+
+    if cmd:
+        creationflags = subprocess.CREATE_NEW_CONSOLE if sys.platform == "win32" else 0
+        try:
+            subprocess.Popen(cmd, cwd=project_dir, creationflags=creationflags)
+            return True
+        except Exception:
+            pass
+    return False
+
+
 class CheckUpdateWorker(QThread):
     """Worker kiểm tra phiên bản mới trực tiếp từ GitHub hbminh2508-design/SolveX."""
 

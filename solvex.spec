@@ -28,7 +28,8 @@ for package in ("soundcard", "mss", "markdown"):
 
 hiddenimports += collect_submodules("markdown.extensions")
 
-a = Analysis(
+# 1. Main SolveX.exe
+a_main = Analysis(
     ["main.py"],
     pathex=[],
     binaries=binaries,
@@ -41,13 +42,13 @@ a = Analysis(
     noarchive=False,
 )
 
-pyz = PYZ(a.pure)
+pyz_main = PYZ(a_main.pure)
 
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.datas,
+exe_main = EXE(
+    pyz_main,
+    a_main.scripts,
+    a_main.binaries,
+    a_main.datas,
     [],
     name="SolveX",
     debug=False,
@@ -55,7 +56,44 @@ exe = EXE(
     strip=False,
     upx=False,
     runtime_tmpdir=None,
-    console=False,          # đổi thành True nếu cần xem log lỗi khi chạy
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon="assets/icon.ico",
+)
+
+# 2. Standalone update.exe
+a_upd = Analysis(
+    ["update.py"],
+    pathex=[],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=["tkinter", "matplotlib", "scipy", "pandas", "PyQt5", "PySide6"],
+    noarchive=False,
+)
+
+pyz_upd = PYZ(a_upd.pure)
+
+exe_upd = EXE(
+    pyz_upd,
+    a_upd.scripts,
+    a_upd.binaries,
+    a_upd.datas,
+    [],
+    name="update",
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    runtime_tmpdir=None,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

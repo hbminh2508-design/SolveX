@@ -1,9 +1,20 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.8.9.119b1a3"
+APP_VERSION = "1.9.0"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.9.0",
+        "2026-08-13",
+        [
+            "Tách biệt hoàn toàn tính năng Kiểm tra Cập nhật & Build/Cài đặt bản mới sang ứng dụng độc lập update.exe (update.py).",
+            "Khi bấm 'Kiểm tra cập nhật' từ SolveX chính, ứng dụng sẽ khởi chạy trình quản lý cập nhật độc lập update.exe.",
+            "Ứng dụng update.exe tự động đọc phiên bản cài đặt hiện tại, tra cứu bản mới từ GitHub Releases/Tags API.",
+            "Giao diện WinUI 3 Fluent chuyên nghiệp cho update.exe: hiển thị nhật ký thay đổi (Changelog), tiến độ tải % thời gian thực (Speed, ETA) và các tuỳ chọn build/cài đặt linh hoạt.",
+            "Cấu hình PyInstaller tự động đóng gói cả SolveX.exe và update.exe vào thư mục dist/ khi thực thi build.bat.",
+        ],
+    ),
     (
         "1.8.9.119b1a3",
         "2026-08-13",

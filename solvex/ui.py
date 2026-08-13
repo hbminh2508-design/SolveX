@@ -49,7 +49,7 @@ from .history import HistoryManager
 from .i18n import i18n
 from .icons import IconFactory
 from .saved_questions import SavedQuestionsManager
-from .updater import BuildExeWorker, CheckUpdateWorker, DownloadUpdateWorker
+from .updater import BuildExeWorker, CheckUpdateWorker, DownloadUpdateWorker, launch_standalone_updater
 from .version import APP_VERSION, changelog_markdown
 from .workers import AskWorker, CaptureWorker, RecordWorker, TestApiWorker
 
@@ -2015,13 +2015,15 @@ class MainWindow(QMainWindow):
         self.test_api_btn.setEnabled(True)
         self._error("Lỗi API Key", i18n.t("st_test_failed") + err)
 
-    # ------------------ Kiểm Tra & Tải Cập Nhật Trực Tiếp Trong App ------------------
+    # ------------------ Kiểm Tra & Tải Cập Nhật Qua Ứng Dụng Độc Lập (v1.9.0) ------------------
     def on_check_update(self):
-        self.status.showMessage("Đang kiểm tra phiên bản mới trên GitHub (hbminh2508-design/SolveX)...")
-        self.update_worker = CheckUpdateWorker()
-        self.update_worker.up_to_date.connect(self._on_up_to_date)
-        self.update_worker.update_available.connect(self._on_update_available)
-        self.update_worker.start()
+        """Mở ứng dụng kiểm tra cập nhật độc lập update.exe (v1.9.0)."""
+        self.status.showMessage("Đang mở trình kiểm tra cập nhật độc lập SolveX Updater (update.exe)...")
+        ok = launch_standalone_updater(APP_VERSION)
+        if ok:
+            self.status.showMessage("Đã mở trình kiểm tra cập nhật độc lập SolveX Updater (update.exe).", 5000)
+        else:
+            self._error("Lỗi Khởi Chạy", "Không thể mở ứng dụng cập nhật độc lập update.exe!")
 
     def _on_up_to_date(self, ver: str):
         msg = i18n.t("st_latest_ver", ver)

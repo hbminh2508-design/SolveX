@@ -4,8 +4,9 @@ echo ======================================================
 echo           SolveX Auto Update Installer & Builder
 echo ======================================================
 
-echo [+] Stopping any running SolveX.exe instance...
+echo [+] Stopping any running SolveX.exe and update.exe instances...
 taskkill /F /IM SolveX.exe 2>nul
+taskkill /F /IM update.exe 2>nul
 timeout /t 1 /nobreak >nul
 
 echo [+] Starting PyInstaller build process...
