@@ -1,11 +1,11 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.13.0"
+APP_VERSION = "1.13.0.e4007d5"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.13.0",
+        "1.13.0.e4007d5",
         "2026-08-13",
         [
             "Cập nhật hiển thị phân số (\\frac{x}{y} và x/y): Tự động hiển thị dạng số trên (tử số) & số dưới (mẫu số) với vạch phân số nằm ngang, 100% inline không bị lỗi nhảy dòng.",
