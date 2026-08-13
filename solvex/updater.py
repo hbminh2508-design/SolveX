@@ -24,6 +24,40 @@ GITHUB_API_RELEASE = f"https://api.github.com/repos/{TARGET_GITHUB_REPO}/release
 GITHUB_API_COMMITS = f"https://api.github.com/repos/{TARGET_GITHUB_REPO}/commits/main"
 GITHUB_API_TAGS = f"https://api.github.com/repos/{TARGET_GITHUB_REPO}/tags"
 
+import urllib.parse
+
+ALLOWED_HOSTS = {
+    "github.com",
+    "api.github.com",
+    "raw.githubusercontent.com",
+    "objects.githubusercontent.com",
+    "codeload.github.com",
+}
+
+
+def validate_download_url(url: str) -> bool:
+    """Xác thực bảo mật URL tải về: bắt buộc HTTPS & domain chính chủ GitHub."""
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme.lower() != "https":
+            return False
+        hostname = (parsed.hostname or "").lower()
+        return hostname in ALLOWED_HOSTS or hostname.endswith(".githubusercontent.com") or hostname.endswith(".github.com")
+    except Exception:
+        return False
+
+
+def verify_pe_executable(file_path: str) -> bool:
+    """Xác thực định dạng binary an toàn: kiểm tra MZ header (0x4D 0x5A) của file .exe."""
+    try:
+        if not os.path.exists(file_path) or os.path.getsize(file_path) < 1024:
+            return False
+        with open(file_path, "rb") as f:
+            header = f.read(2)
+            return header == b"MZ"
+    except Exception:
+        return False
+
 
 def launch_standalone_updater(current_version: str = None) -> bool:
     """Khởi chạy ứng dụng update.exe (hoặc python update.py) trong tiến trình riêng độc lập với SolveX."""

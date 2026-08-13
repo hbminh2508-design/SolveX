@@ -2051,13 +2051,12 @@ class MainWindow(QMainWindow):
         self.show_key2.setText("Ẩn" if shown else "Hiện")
 
     def _on_model_mode_changed(self):
-        mode = self.mode_combo.currentData()
-        is_dual = mode in ("turbo", "turbo_plus")
-        self.lbl_m2.setEnabled(is_dual)
-        self.key2_same_rad.setEnabled(is_dual)
-        self.key2_sep_rad.setEnabled(is_dual)
-        self.model2_input.setEnabled(is_dual)
-        self.test_api2_btn.setEnabled(is_dual)
+        # Cho phép người dùng chỉnh sửa thông tin Model 2 (tên model, key riêng) bất cứ lúc nào
+        self.lbl_m2.setEnabled(True)
+        self.key2_same_rad.setEnabled(True)
+        self.key2_sep_rad.setEnabled(True)
+        self.model2_input.setEnabled(True)
+        self.test_api2_btn.setEnabled(True)
         self._toggle_key2_enabled()
 
     def on_language_changed(self, lang_code: str):

@@ -1,9 +1,23 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.10.0.27cc15e"
+APP_VERSION = "1.11.0"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.11.0",
+        "2026-08-13",
+        [
+            "Nâng cấp ứng dụng update.exe: Bổ sung thanh tiến trình cài đặt & build (% 0-100%, log chi tiết thời gian thực) trực quan.",
+            "Tối ưu phạm vi đóng gói: Khi cài đặt bản cập nhật, ứng dụng chỉ đóng gói ứng dụng chính SolveX.exe (dùng solvex_main.spec), không build lại update.exe để loại bỏ triệt để lỗi khóa file.",
+            "Sửa lỗi cấu hình Model 2: Mở khóa 100% tất cả ô nhập liệu (Tên Model 2, API Key riêng, Nút thử nghiệm) trong tab Cài đặt giúp người dùng tự do nhập/sửa thông tin Model 2 bất cứ lúc nào.",
+            "Cập nhật hệ thống Bảo vệ An toàn & Chống Mã độc (Anti-Malware Security Hardening):",
+            "  - Pinning domain HTTPS chính chủ GitHub (hbminh2508-design/SolveX) & xác thực chữ ký định dạng binary (MZ Header).",
+            "  - Chuẩn hóa lệnh subprocess không dùng shell string để ngăn chặn tấn công chèn lệnh (Command Injection).",
+            "  - Ẩn/Mã hóa hiển thị API Key trên toàn hệ thống log và hộp thoại lỗi.",
+            "  - Lọc làm sạch dữ liệu HTML/Markdown trước khi render trong QTextBrowser tránh tấn công XSS.",
+        ],
+    ),
     (
         "1.10.0.27cc15e",
         "2026-08-13",

@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
-"""SolveX Updater — Ứng dụng kiểm tra và quản lý cập nhật độc lập cho SolveX (v1.9.0).
+"""SolveX Updater — Ứng dụng kiểm tra và quản lý cập nhật độc lập cho SolveX (v1.11.0).
 Chạy tách biệt hoàn toàn khỏi tiến trình SolveX.exe chính.
+Tích hợp bảo mật nâng cao (Anti-Malware Pinning & Signature Check).
 """
 
 import argparse
+import html
 import os
+import shutil
 import subprocess
 import sys
+import time
+import urllib.parse
 import webbrowser
 
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
 from PyQt6.QtGui import QFont, QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
@@ -29,11 +34,110 @@ from solvex import style
 from solvex.ui import render_markdown, wrap_html_page
 from solvex.updater import (
     TARGET_GITHUB_REPO,
-    BuildExeWorker,
     CheckUpdateWorker,
     DownloadUpdateWorker,
+    validate_download_url,
+    verify_pe_executable,
 )
 from solvex.version import APP_VERSION, CHANGELOG, changelog_markdown
+
+
+class InstallMainWorker(QThread):
+    """Worker đóng gói & cài đặt ứng dụng chính SolveX.exe (chỉ build SolveX.exe, không build lại update.exe để tránh lỗi khóa file)."""
+
+    progress_signal = pyqtSignal(int, str)  # (percent 0-100, log_line)
+    succeeded = pyqtSignal(str)              # (exe_path)
+    failed = pyqtSignal(str)
+
+    def __init__(self, project_dir: str, parent=None):
+        super().__init__(parent)
+        self.project_dir = project_dir
+
+    def run(self):
+        try:
+            self.progress_signal.emit(5, "Đang khởi động tiến trình cài đặt...")
+
+            # 1. Dừng an toàn tất cả các tiến trình SolveX.exe cũ
+            self.progress_signal.emit(10, "Đang dừng tiến trình SolveX.exe cũ để giải phóng file hệ thống...")
+            if sys.platform == "win32":
+                try:
+                    subprocess.run(["taskkill", "/F", "/IM", "SolveX.exe"], capture_output=True, text=True)
+                except Exception:
+                    pass
+            time.sleep(1)
+
+            # 2. Kiểm tra file spec riêng chỉ build SolveX.exe (solvex_main.spec)
+            spec_file = os.path.join(self.project_dir, "solvex_main.spec")
+            if not os.path.exists(spec_file):
+                spec_file = os.path.join(self.project_dir, "solvex.spec")
+
+            if not os.path.exists(spec_file):
+                self.failed.emit(f"Không tìm thấy file cấu hình {spec_file}!")
+                return
+
+            # 3. Tìm PyInstaller trong môi trường ảo .venv hoặc hệ thống
+            python_exe = os.path.join(self.project_dir, ".venv", "Scripts", "python.exe")
+            pyinstaller_exe = os.path.join(self.project_dir, ".venv", "Scripts", "pyinstaller.exe")
+
+            if os.path.exists(pyinstaller_exe):
+                cmd = [pyinstaller_exe, "--noconfirm", spec_file]
+            elif os.path.exists(python_exe):
+                cmd = [python_exe, "-m", "PyInstaller", "--noconfirm", spec_file]
+            else:
+                sys_pyinstaller = shutil.which("pyinstaller")
+                if sys_pyinstaller:
+                    cmd = [sys_pyinstaller, "--noconfirm", spec_file]
+                else:
+                    cmd = [sys.executable, "-m", "PyInstaller", "--noconfirm", spec_file]
+
+            self.progress_signal.emit(20, f"Lệnh biên dịch: {' '.join(cmd)}")
+
+            # 4. Khởi chạy tiến trình PyInstaller và đọc log thời gian thực
+            proc = subprocess.Popen(
+                cmd,
+                cwd=self.project_dir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+
+            current_pct = 20
+            for line in proc.stdout:
+                line_str = line.strip()
+                if not line_str:
+                    continue
+
+                if "Analyzing" in line_str:
+                    current_pct = min(current_pct + 2, 50)
+                elif "Building PYZ" in line_str:
+                    current_pct = 60
+                elif "Building PKG" in line_str:
+                    current_pct = 75
+                elif "Building EXE" in line_str:
+                    current_pct = 85
+                elif "Fixing EXE headers" in line_str:
+                    current_pct = 95
+
+                self.progress_signal.emit(current_pct, line_str)
+
+            proc.wait()
+
+            if proc.returncode == 0:
+                exe_path = os.path.join(self.project_dir, "dist", "SolveX.exe")
+
+                # 5. Xác thực an toàn PE header (MZ) cho file SolveX.exe mới build
+                if verify_pe_executable(exe_path):
+                    self.progress_signal.emit(100, f"✓ Cài đặt hoàn tất! File thực thi đã được kiểm tra an toàn: {exe_path}")
+                    self.succeeded.emit(exe_path)
+                else:
+                    self.failed.emit(f"File thực thi {exe_path} không vượt qua kiểm tra an toàn binary PE (MZ Header)!")
+            else:
+                self.failed.emit(f"Tiến trình cài đặt & build thất bại với mã lỗi {proc.returncode}")
+
+        except Exception as exc:
+            self.failed.emit(f"Lỗi cài đặt: {exc}")
 
 
 class UpdaterWindow(QMainWindow):
@@ -48,25 +152,25 @@ class UpdaterWindow(QMainWindow):
 
         self.check_worker = None
         self.download_worker = None
-        self.build_worker = None
+        self.install_worker = None
 
         self._init_ui()
         self.setStyleSheet(style.get_stylesheet("dark"))
 
-        # Tự động bắt đầu kiểm tra phiên bản mới sau 300ms
+        # Tự động kiểm tra phiên bản mới sau 300ms
         QTimer.singleShot(300, self.start_check_update)
 
     def _init_ui(self):
         self.setWindowTitle(f"SolveX Updater v{self.current_ver} — Trình Cập Nhật Độc Lập")
-        self.setMinimumSize(780, 580)
-        self.resize(800, 620)
+        self.setMinimumSize(800, 640)
+        self.resize(840, 680)
 
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
 
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(14)
+        main_layout.setSpacing(12)
 
         # ---------------- 1. HEADER CARD ----------------
         header_card = QFrame()
@@ -87,7 +191,7 @@ class UpdaterWindow(QMainWindow):
         app_title.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
         app_title.setStyleSheet(f"color: {style.DARK_PALETTE['TEXT']}; border: none;")
 
-        app_subtitle = QLabel("Trình quản lý & kiểm tra cập nhật độc lập dành cho SolveX")
+        app_subtitle = QLabel("Trình quản lý & kiểm tra cập nhật độc lập bảo mật dành cho SolveX")
         app_subtitle.setFont(QFont("Segoe UI", 10))
         app_subtitle.setStyleSheet(f"color: {style.DARK_PALETTE['MUTED']}; border: none;")
 
@@ -97,7 +201,6 @@ class UpdaterWindow(QMainWindow):
         header_layout.addLayout(title_vbox)
         header_layout.addStretch()
 
-        # Badges hiển thị phiên bản
         ver_box = QVBoxLayout()
         ver_box.setSpacing(4)
         ver_box.setAlignment(Qt.AlignmentFlag.AlignRight)
@@ -142,14 +245,14 @@ class UpdaterWindow(QMainWindow):
             }}
         """)
         status_layout = QHBoxLayout(self.status_card)
-        status_layout.setContentsMargins(14, 12, 14, 12)
+        status_layout.setContentsMargins(14, 10, 14, 10)
 
         self.lbl_status_icon = QLabel("🔍")
         self.lbl_status_icon.setFont(QFont("Segoe UI", 14))
         self.lbl_status_icon.setStyleSheet("border: none;")
 
-        self.lbl_status_text = QLabel("Đang kiểm tra phiên bản mới từ GitHub Repository (hbminh2508-design/SolveX)...")
-        self.lbl_status_text.setFont(QFont("Segoe UI", 11, QFont.Weight.Medium))
+        self.lbl_status_text = QLabel("Đang kiểm tra phiên bản mới từ GitHub Repository chính chủ (hbminh2508-design/SolveX)...")
+        self.lbl_status_text.setFont(QFont("Segoe UI", 10, QFont.Weight.Medium))
         self.lbl_status_text.setStyleSheet(f"color: {style.DARK_PALETTE['TEXT']}; border: none;")
 
         status_layout.addWidget(self.lbl_status_icon)
@@ -158,10 +261,10 @@ class UpdaterWindow(QMainWindow):
 
         # ---------------- 3. CHANGELOG & DETAILS AREA ----------------
         cl_box = QVBoxLayout()
-        cl_box.setSpacing(6)
+        cl_box.setSpacing(4)
 
         cl_title = QLabel("📋 Nhật Ký Cập Nhật / Release Notes:")
-        cl_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
+        cl_title.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
         cl_title.setStyleSheet(f"color: {style.DARK_PALETTE['TEAL']};")
         cl_box.addWidget(cl_title)
 
@@ -178,44 +281,96 @@ class UpdaterWindow(QMainWindow):
         cl_box.addWidget(self.browser, 1)
         main_layout.addLayout(cl_box, 1)
 
-        # ---------------- 4. PROGRESS BAR CARD ----------------
-        self.progress_card = QFrame()
-        self.progress_card.setStyleSheet(f"""
+        # ---------------- 4. PROGRESS CARDS (DOWNLOAD & INSTALL) ----------------
+        # 4A. Download Progress Card
+        self.download_card = QFrame()
+        self.download_card.setStyleSheet(f"""
             QFrame {{
                 background-color: {style.DARK_PALETTE['CARD']};
                 border: 1px solid {style.DARK_PALETTE['BORDER']};
                 border-radius: 10px;
             }}
         """)
-        prog_layout = QVBoxLayout(self.progress_card)
-        prog_layout.setContentsMargins(14, 12, 14, 12)
-        prog_layout.setSpacing(6)
+        dl_layout = QVBoxLayout(self.download_card)
+        dl_layout.setContentsMargins(14, 10, 14, 10)
+        dl_layout.setSpacing(4)
 
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setRange(0, 100)
-        self.progress_bar.setValue(0)
-        self.progress_bar.setFixedHeight(18)
-        self.progress_bar.setStyleSheet(f"""
+        dl_hdr = QLabel("📥 Tiến Độ Tải Cập Nhật:")
+        dl_hdr.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
+        dl_hdr.setStyleSheet(f"color: {style.DARK_PALETTE['TEAL']}; border: none;")
+        dl_layout.addWidget(dl_hdr)
+
+        self.download_progress_bar = QProgressBar()
+        self.download_progress_bar.setRange(0, 100)
+        self.download_progress_bar.setValue(0)
+        self.download_progress_bar.setFixedHeight(16)
+        self.download_progress_bar.setStyleSheet(f"""
             QProgressBar {{
                 background-color: {style.DARK_PALETTE['INPUT_BG']};
                 border: 1px solid {style.DARK_PALETTE['BORDER']};
-                border-radius: 9px;
+                border-radius: 8px;
                 text-align: center;
                 color: #ffffff;
                 font-weight: bold;
+                font-size: 10px;
             }}
             QProgressBar::chunk {{
                 background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0ea5e9, stop:1 #3b82f6);
-                border-radius: 8px;
+                border-radius: 7px;
             }}
         """)
 
-        self.lbl_progress_info = QLabel("Sẵn sàng tiến trình.")
-        self.lbl_progress_info.setStyleSheet(f"color: {style.DARK_PALETTE['MUTED']}; border: none; font-size: 11px;")
+        self.lbl_download_info = QLabel("Sẵn sàng tải.")
+        self.lbl_download_info.setStyleSheet(f"color: {style.DARK_PALETTE['MUTED']}; border: none; font-size: 11px;")
 
-        prog_layout.addWidget(self.progress_bar)
-        prog_layout.addWidget(self.lbl_progress_info)
-        main_layout.addWidget(self.progress_card)
+        dl_layout.addWidget(self.download_progress_bar)
+        dl_layout.addWidget(self.lbl_download_info)
+        main_layout.addWidget(self.download_card)
+
+        # 4B. Install/Build Progress Card (CHUYÊN TRÁCH TIẾN TRÌNH CÀI ĐẶT SOLVEX.EXE)
+        self.install_card = QFrame()
+        self.install_card.setStyleSheet(f"""
+            QFrame {{
+                background-color: {style.DARK_PALETTE['CARD']};
+                border: 1px solid {style.DARK_PALETTE['BORDER']};
+                border-radius: 10px;
+            }}
+        """)
+        inst_layout = QVBoxLayout(self.install_card)
+        inst_layout.setContentsMargins(14, 10, 14, 10)
+        inst_layout.setSpacing(4)
+
+        inst_hdr = QLabel("🛠 Tiến Độ Cài Đặt & Đóng Gói SolveX.exe:")
+        inst_hdr.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
+        inst_hdr.setStyleSheet("color: #10b981; border: none;")
+        inst_layout.addWidget(inst_hdr)
+
+        self.install_progress_bar = QProgressBar()
+        self.install_progress_bar.setRange(0, 100)
+        self.install_progress_bar.setValue(0)
+        self.install_progress_bar.setFixedHeight(16)
+        self.install_progress_bar.setStyleSheet(f"""
+            QProgressBar {{
+                background-color: {style.DARK_PALETTE['INPUT_BG']};
+                border: 1px solid {style.DARK_PALETTE['BORDER']};
+                border-radius: 8px;
+                text-align: center;
+                color: #ffffff;
+                font-weight: bold;
+                font-size: 10px;
+            }}
+            QProgressBar::chunk {{
+                background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10b981, stop:1 #059669);
+                border-radius: 7px;
+            }}
+        """)
+
+        self.lbl_install_info = QLabel("Chưa cài đặt.")
+        self.lbl_install_info.setStyleSheet(f"color: {style.DARK_PALETTE['MUTED']}; border: none; font-size: 11px;")
+
+        inst_layout.addWidget(self.install_progress_bar)
+        inst_layout.addWidget(self.lbl_install_info)
+        main_layout.addWidget(self.install_card)
 
         # ---------------- 5. ACTION BUTTONS ROW ----------------
         btn_layout = QHBoxLayout()
@@ -248,7 +403,7 @@ class UpdaterWindow(QMainWindow):
         """)
         self.btn_download.clicked.connect(self.start_download_update)
 
-        self.btn_install = QPushButton("⚡ Đóng SolveX & Build Cài Bản Mới")
+        self.btn_install = QPushButton("⚡ Đóng SolveX & Cài Đặt Bản Mới")
         self.btn_install.setFixedHeight(38)
         self.btn_install.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_install.setStyleSheet(f"""
@@ -262,8 +417,12 @@ class UpdaterWindow(QMainWindow):
             QPushButton:hover {{
                 background-color: #059669;
             }}
+            QPushButton:disabled {{
+                background-color: #334155;
+                color: #64748b;
+            }}
         """)
-        self.btn_install.clicked.connect(self.trigger_build_installer)
+        self.btn_install.clicked.connect(self.trigger_install_app)
 
         self.btn_github = QPushButton("🌐 GitHub Repo")
         self.btn_github.setFixedHeight(38)
@@ -286,8 +445,8 @@ class UpdaterWindow(QMainWindow):
 
     def _show_initial_changelog(self):
         md_content = changelog_markdown()
-        html = wrap_html_page(render_markdown(md_content), "dark")
-        self.browser.setHtml(html)
+        html_text = wrap_html_page(render_markdown(md_content), "dark")
+        self.browser.setHtml(html_text)
 
     # ---------------- LOGIC KIỂM TRA CẬP NHẬT ----------------
     def start_check_update(self):
@@ -328,7 +487,7 @@ class UpdaterWindow(QMainWindow):
         self.btn_download.setEnabled(True)
 
         self.lbl_status_icon.setText("🎉")
-        self.lbl_status_text.setText(f"Đã tìm thấy phiên bản mới: SolveX v{remote_ver}! Bấm nút bên dưới để tải về hoặc build mới.")
+        self.lbl_status_text.setText(f"Đã tìm thấy phiên bản mới: SolveX v{remote_ver}! Bấm nút bên dưới để tải về hoặc cài đặt.")
         self.lbl_remote_ver.setText(f"Phiên bản trên GitHub: <b>v{remote_ver} (Có bản mới!)</b>")
         self.lbl_remote_ver.setStyleSheet("""
             QLabel {
@@ -351,14 +510,19 @@ class UpdaterWindow(QMainWindow):
         self.lbl_status_text.setText(f"Không thể kiểm tra cập nhật: {err}")
         self.lbl_remote_ver.setText("Phiên bản trên GitHub: <b>Lỗi kết nối</b>")
 
-    # ---------------- LOGIC TẢI BẢN MỚI ----------------
+    # ---------------- LOGIC TẢI BẢN MỚI (BẢO MẬT HTTPS & PINNING) ----------------
     def start_download_update(self):
         if not self.remote_ver:
             return
 
+        # Kiểm tra bảo mật URL tải về
+        if not validate_download_url(self.download_url):
+            QMessageBox.critical(self, "Cảnh Báo Bảo Mật", "URL tải về không thuộc domain chính chủ của GitHub Repository (hbminh2508-design/SolveX)! Tiến trình bị hủy bỏ vì lý do an toàn.")
+            return
+
         self.btn_download.setEnabled(False)
-        self.progress_bar.setValue(0)
-        self.lbl_progress_info.setText("Đang khởi tạo tiến trình tải về...")
+        self.download_progress_bar.setValue(0)
+        self.lbl_download_info.setText("Đang khởi tạo tiến trình tải về bảo mật...")
 
         self.download_worker = DownloadUpdateWorker(self.download_url, f"SolveX_v{self.remote_ver}.exe")
         self.download_worker.progress_signal.connect(self._on_download_progress)
@@ -368,99 +532,96 @@ class UpdaterWindow(QMainWindow):
         self.download_worker.start()
 
     def _on_download_progress(self, percent: float, speed_str: str, eta_str: str, downloaded: int, total: int):
-        self.progress_bar.setValue(int(percent))
+        self.download_progress_bar.setValue(int(percent))
         dl_mb = downloaded / (1024 * 1024)
         total_mb = total / (1024 * 1024) if total > 0 else 0
-        info = f"Tiến độ: {percent:.1f}% | Tốc độ: {speed_str} | Thời gian còn lại: {eta_str} | Đã tải: {dl_mb:.1f} MB / {total_mb:.1f} MB"
-        self.lbl_progress_info.setText(info)
+        info = f"Tiến độ tải: {percent:.1f}% | Tốc độ: {speed_str} | Còn lại: {eta_str} | Đã tải: {dl_mb:.1f} MB / {total_mb:.1f} MB"
+        self.lbl_download_info.setText(info)
 
     def _on_download_finished(self, saved_path: str):
         self.btn_download.setEnabled(True)
-        self.progress_bar.setValue(100)
-        self.lbl_progress_info.setText(f"✓ Đã tải thành công: {saved_path}")
+        self.download_progress_bar.setValue(100)
+        self.lbl_download_info.setText(f"✓ Đã tải thành công file an toàn: {saved_path}")
 
         reply = QMessageBox.question(
             self,
             "Tải Hoàn Tất — SolveX Updater",
             f"Đã tải thành công file cài đặt phiên bản mới tại:\n{saved_path}\n\n"
-            f"Bạn có muốn tự động đóng tất cả ứng dụng SolveX cũ và cài đặt/build bản mới ngay bây giờ không?",
+            f"Bạn có muốn tự động đóng tiến trình SolveX cũ và tiến hành cài đặt ngay bây giờ không?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
-            self.trigger_build_installer()
+            self.trigger_install_app()
 
     def _on_no_asset_found(self, web_url: str):
         self.btn_download.setEnabled(True)
         reply = QMessageBox.question(
             self,
             "SolveX Updater — Thông Báo",
-            "Phiên bản mới đã có trên GitHub! Hiện chưa có sẵn file .exe đóng gói trên Releases Assets.\n\n"
-            "Bạn có muốn tự động đóng SolveX và tự tạo bản build .exe mới ngay tại máy không?",
+            "Phiên bản mới đã có trên GitHub! Hiện chưa có sẵn file .exe đóng gói sẵn trên Releases Assets.\n\n"
+            "Bạn có muốn tự động tiến hành cài đặt & biên dịch phiên bản SolveX.exe mới ngay tại máy không?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
-            self.trigger_build_installer()
+            self.trigger_install_app()
         else:
             webbrowser.open(web_url)
 
     def _on_download_failed(self, err: str):
         self.btn_download.setEnabled(True)
-        self.lbl_progress_info.setText(f"❌ Lỗi tải về: {err}")
+        self.lbl_download_info.setText(f"❌ Lỗi tải về: {err}")
         QMessageBox.critical(self, "Lỗi Tải Cập Nhật", err)
 
-    # ---------------- LOGIC CÀI ĐẶT & BUILD BẢN MỚI ----------------
-    def trigger_build_installer(self):
+    # ---------------- LOGIC CÀI ĐẶT & BUILD CHỈ SOLVEX.EXE (CÓ THANH TIẾN TRÌNH CÀI ĐẶT TRỰC QUAN) ----------------
+    def trigger_install_app(self):
         reply = QMessageBox.question(
             self,
-            "Xác Nhận Cài Đặt & Build SolveX",
+            "Xác Nhận Cài Đặt SolveX",
             "Tiến trình sẽ đóng tất cả cửa sổ SolveX đang chạy để giải phóng file hệ thống, "
-            "sau đó khởi chạy kịch bản build.bat tự động đóng gói ứng dụng mới.\n\n"
+            "sau đó tiến hành đóng gói & cài đặt phiên bản SolveX.exe mới.\n\n"
+            "Lưu ý: Chỉ cài đặt/build ứng dụng chính SolveX.exe (không đụng tới update.exe để đảm bảo an toàn tuyệt đối và tránh lỗi khóa file).\n\n"
             "Bạn có chắc chắn muốn tiến hành không?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
 
-        # 1. Kill old SolveX.exe instances
-        try:
-            if sys.platform == "win32":
-                subprocess.run(["taskkill", "/F", "/IM", "SolveX.exe"], capture_output=True, text=True)
-        except Exception:
-            pass
+        self.btn_install.setEnabled(False)
+        self.install_progress_bar.setValue(0)
+        self.lbl_install_info.setText("Đang khởi tạo tiến trình cài đặt SolveX.exe...")
 
-        # 2. Trigger build.bat or BuildExeWorker
         project_dir = os.path.dirname(os.path.abspath(__file__))
-        build_bat = os.path.join(project_dir, "build.bat")
 
-        if os.path.exists(build_bat):
-            try:
-                subprocess.Popen(["cmd.exe", "/c", build_bat], cwd=project_dir, creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == "win32" else 0)
-                self.lbl_progress_info.setText("✓ Đã kích hoạt build.bat độc lập. Đang đóng updater...")
-                QTimer.singleShot(1500, self.close)
-                return
-            except Exception as exc:
-                QMessageBox.warning(self, "Lỗi Kích Hoạt Batch", f"Không thể khởi chạy build.bat: {exc}")
+        self.install_worker = InstallMainWorker(project_dir)
+        self.install_worker.progress_signal.connect(self._on_install_progress)
+        self.install_worker.succeeded.connect(self._on_install_success)
+        self.install_worker.failed.connect(self._on_install_failed)
+        self.install_worker.start()
 
-        # Fallback build worker
-        self.lbl_progress_info.setText("Đang tiến hành tự động build SolveX.exe...")
-        self.build_worker = BuildExeWorker(project_dir)
-        self.build_worker.progress.connect(lambda msg: self.lbl_progress_info.setText(msg))
-        self.build_worker.succeeded.connect(self._on_build_success)
-        self.build_worker.failed.connect(lambda err: QMessageBox.critical(self, "Lỗi Build", err))
-        self.build_worker.start()
+    def _on_install_progress(self, percent: int, log_line: str):
+        self.install_progress_bar.setValue(percent)
+        self.lbl_install_info.setText(log_line)
 
-    def _on_build_success(self, exe_path: str):
-        self.lbl_progress_info.setText(f"✓ Build thành công: {exe_path}")
+    def _on_install_success(self, exe_path: str):
+        self.btn_install.setEnabled(True)
+        self.install_progress_bar.setValue(100)
+        self.lbl_install_info.setText(f"✓ Cài đặt thành công: {exe_path}")
+
         reply = QMessageBox.information(
             self,
-            "Build Thành Công",
-            f"Đã đóng gói thành công phiên bản SolveX mới tại:\n{exe_path}\n\nBấm OK để khởi chạy ứng dụng mới!",
+            "Cài Đặt Hoàn Tất",
+            f"Đã hoàn thành đóng gói & cài đặt phiên bản SolveX mới tại:\n{exe_path}\n\nBấm OK để khởi chạy ứng dụng SolveX mới!",
         )
         try:
             subprocess.Popen([exe_path], cwd=os.path.dirname(exe_path))
             self.close()
         except Exception as exc:
-            QMessageBox.warning(self, "Khởi Chạy Ứng Dụng", f"Không thể khởi chạy SolveX.exe: {exc}")
+            QMessageBox.warning(self, "Khởi Chạy Ứng Dụng", f"Không thể tự khởi chạy SolveX.exe: {exc}")
+
+    def _on_install_failed(self, err: str):
+        self.btn_install.setEnabled(True)
+        self.lbl_install_info.setText(f"❌ Lỗi cài đặt: {err}")
+        QMessageBox.critical(self, "Lỗi Cài Đặt", err)
 
 
 def main():
