@@ -1,11 +1,11 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.12.0"
+APP_VERSION = "1.12.0.e863de1"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.12.0",
+        "1.12.0.e863de1",
         "2026-08-13",
         [
             "Sửa triệt để lỗi nhảy dòng của ký hiệu vector (\\vec{X}): Chuyển sang dùng ký tự Unicode Combining Right Arrow Above (\\u20d7) kết hợp trực tiếp trên chữ.",
