@@ -1,11 +1,11 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.10.0"
+APP_VERSION = "1.10.0.27cc15e"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
     (
-        "1.10.0",
+        "1.10.0.27cc15e",
         "2026-08-13",
         [
             "Cập nhật định dạng hiển thị ký hiệu vector (\\vec{X}): Đảm bảo mũi tên (→) luôn được căn giữa trực tiếp PHÍA TRÊN ký hiệu chữ, không bị nằm lệch sang bên trái.",
