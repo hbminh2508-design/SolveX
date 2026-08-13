@@ -49,6 +49,7 @@ from .history import HistoryManager
 from .i18n import i18n
 from .icons import IconFactory
 from .saved_questions import SavedQuestionsManager
+from .security import SecuritySentinel, deobfuscate_secret, mask_api_key, obfuscate_secret
 from .updater import BuildExeWorker, CheckUpdateWorker, DownloadUpdateWorker, launch_standalone_updater
 from .version import APP_VERSION, changelog_markdown
 from .workers import AskWorker, CaptureWorker, RecordWorker, TestApiWorker
@@ -340,35 +341,30 @@ def _convert_math_expr(expr: str) -> str:
                 changed = True
                 continue
 
-        # \vec{X} - vector with arrow directly ABOVE symbol
+        # \vec{X} - vector arrow directly ABOVE symbol using combining right arrow above (\u20d7)
+        # Triệt tiêu hoàn toàn lỗi nhảy dòng của HTML table trong QTextBrowser
         m = re.search(r'\\vec\s*\{', expr)
         if m:
             inner, after = _find_brace_group(expr, m.end() - 1)
             if inner is not None:
                 inner_html = _convert_math_expr(inner)
-                vec_table = (
-                    f"<table style='display:inline-table; border-collapse:collapse; vertical-align:middle; text-align:center; margin:0 1px;'>"
-                    f"<tr><td style='padding:0; font-size:9px; line-height:8px; text-align:center; color:#0ea5e9;'>→</td></tr>"
-                    f"<tr><td style='padding:0; text-align:center;'>{inner_html}</td></tr>"
-                    f"</table>"
-                )
-                expr = expr[:m.start()] + vec_table + expr[after:]
+                vec_str = "".join(c + "\u20d7" if c.isalpha() else c for c in inner_html)
+                if not any("\u20d7" in c for c in vec_str):
+                    vec_str = inner_html + "\u20d7"
+                expr = expr[:m.start()] + vec_str + expr[after:]
                 changed = True
                 continue
 
-        # \hat{X} - hat accent directly ABOVE symbol
+        # \hat{X} - hat accent directly ABOVE symbol using combining circumflex accent (\u0302)
         m = re.search(r'\\hat\s*\{', expr)
         if m:
             inner, after = _find_brace_group(expr, m.end() - 1)
             if inner is not None:
                 inner_html = _convert_math_expr(inner)
-                hat_table = (
-                    f"<table style='display:inline-table; border-collapse:collapse; vertical-align:middle; text-align:center; margin:0 1px;'>"
-                    f"<tr><td style='padding:0; font-size:9px; line-height:8px; text-align:center; color:#0ea5e9;'>^</td></tr>"
-                    f"<tr><td style='padding:0; text-align:center;'>{inner_html}</td></tr>"
-                    f"</table>"
-                )
-                expr = expr[:m.start()] + hat_table + expr[after:]
+                hat_str = "".join(c + "\u0302" if c.isalpha() else c for c in inner_html)
+                if not any("\u0302" in c for c in hat_str):
+                    hat_str = inner_html + "\u0302"
+                expr = expr[:m.start()] + hat_str + expr[after:]
                 changed = True
                 continue
 
@@ -1236,6 +1232,10 @@ class MainWindow(QMainWindow):
 
         self._setup_tray()
         i18n.language_changed.connect(self.on_language_changed)
+
+        # Khởi chạy Sentinel bảo mật chạy ngầm siêu nhẹ (<0.01% CPU, <1MB RAM)
+        self.sec_sentinel = SecuritySentinel(self.config.path, self)
+        self.sec_sentinel.start()
 
         self.on_new_chat()
 

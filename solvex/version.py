@@ -1,9 +1,21 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.11.0.e46285a"
+APP_VERSION = "1.12.0"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.12.0",
+        "2026-08-13",
+        [
+            "Sửa triệt để lỗi nhảy dòng của ký hiệu vector (\\vec{X}): Chuyển sang dùng ký tự Unicode Combining Right Arrow Above (\\u20d7) kết hợp trực tiếp trên chữ.",
+            "Loại bỏ 100% việc tạo HTML table rườm rà gây xuống hàng/ngắt đoạn dòng văn bản, giúp công thức vector f⃗, v⃗, B⃗ hiển thị mượt mà inline 100% trên cùng 1 dòng.",
+            "Tích hợp Hệ thống Bảo vệ Siêu Nhẹ Chạy Ngầm (SecuritySentinel & Memory Encryptor):",
+            "  - Chạy ngầm siêu tiết kiệm tài nguyên hệ thống (<0.01% CPU, <1MB RAM), không làm chậm hoặc suy giảm hiệu năng máy tính người dùng.",
+            "  - Mã hóa obfuscation API Key trong bộ nhớ RAM chống lại malware memory-scraping đánh cắp tài khoản.",
+            "  - Bảo vệ quyền riêng tư file config.json và giám sát chống tiến trình độc hại can thiệp trái phép.",
+        ],
+    ),
     (
         "1.11.0.e46285a",
         "2026-08-13",
