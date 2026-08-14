@@ -116,25 +116,37 @@ class InstallMainWorker(QThread):
                 except Exception:
                     pass
 
-            # 2. CHẾ ĐỘ CẬP NHẬT SIÊU TỐC (1-SECOND FLASH UPDATE):
-            # Nếu đã có sẵn file .exe đóng gói sẵn (tải từ GitHub Releases Assets hoặc local), thay thế trực tiếp trong 1 giây!
-            if self.downloaded_exe_path and os.path.exists(self.downloaded_exe_path) and verify_pe_executable(self.downloaded_exe_path):
-                self.progress_signal.emit(50, f"⚡ Áp dụng Cập Nhật Siêu Tốc 1 giây từ file thực thi: {self.downloaded_exe_path}")
-                shutil.copy2(self.downloaded_exe_path, target_exe)
+            # 2. CHẾ ĐỘ CẬP NHẬT SIÊU TỐC (1-SECOND FLASH UPDATE CHO CẢ PORTABLE & NON-PORTABLE):
+            # Nếu đã có sẵn file .exe đóng gói sẵn hoặc file .zip gói ứng dụng, thay thế/giải nén trực tiếp trong 1 giây!
+            if self.downloaded_exe_path and os.path.exists(self.downloaded_exe_path):
+                # 2A. File nén Zip chứa toàn bộ thư mục Non-Portable
+                if self.downloaded_exe_path.lower().endswith(".zip"):
+                    import zipfile
+                    self.progress_signal.emit(40, f"⚡ Đang giải nén gói cập nhật Non-Portable: {self.downloaded_exe_path}")
+                    with zipfile.ZipFile(self.downloaded_exe_path, "r") as zf:
+                        zf.extractall(target_dir)
+                    self.progress_signal.emit(100, f"✓ Cập nhật Non-Portable hoàn tất trong 1 giây! Thư mục ứng dụng: {target_dir}")
+                    self.succeeded.emit(target_exe)
+                    return
 
-                # Copy đồng thời sang thư mục nơi update.exe đang chạy (nếu khác dist)
-                if getattr(sys, "frozen", False):
-                    running_dir = os.path.dirname(sys.executable)
-                    if running_dir and running_dir != target_dir:
-                        dest_exe = os.path.join(running_dir, "SolveX.exe")
-                        try:
-                            shutil.copy2(self.downloaded_exe_path, dest_exe)
-                        except Exception:
-                            pass
+                # 2B. File .exe thực thi Portable hoặc Installer
+                elif verify_pe_executable(self.downloaded_exe_path):
+                    self.progress_signal.emit(50, f"⚡ Áp dụng Cập Nhật Siêu Tốc 1 giây từ file thực thi: {self.downloaded_exe_path}")
+                    shutil.copy2(self.downloaded_exe_path, target_exe)
 
-                self.progress_signal.emit(100, f"✓ Cài đặt hoàn tất trong 1 giây! File thực thi sẵn sàng: {target_exe}")
-                self.succeeded.emit(target_exe)
-                return
+                    # Copy đồng thời sang thư mục nơi update.exe đang chạy (nếu khác dist)
+                    if getattr(sys, "frozen", False):
+                        running_dir = os.path.dirname(sys.executable)
+                        if running_dir and running_dir != target_dir:
+                            dest_exe = os.path.join(running_dir, "SolveX.exe")
+                            try:
+                                shutil.copy2(self.downloaded_exe_path, dest_exe)
+                            except Exception:
+                                pass
+
+                    self.progress_signal.emit(100, f"✓ Cài đặt hoàn tất trong 1 giây! File thực thi sẵn sàng: {target_exe}")
+                    self.succeeded.emit(target_exe)
+                    return
 
             # 3. CHẾ ĐỘ BIÊN DỊCH BỘ NHỚ ĐỆM TỐC ĐỘ CAO (FAST CACHED COMPILATION):
             # Kiểm tra file spec riêng chỉ build SolveX.exe (solvex_main.spec)

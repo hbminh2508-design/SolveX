@@ -250,16 +250,29 @@ class DownloadUpdateWorker(QThread):
         self._is_cancelled = True
 
     def _find_direct_exe_url(self) -> str:
-        """Tự động kiểm tra GitHub Release Assets xem có file .exe khả dụng không."""
+        """Tự động kiểm tra GitHub Release Assets xem có file Portable (.exe) hoặc Non-Portable (Setup/Zip) khả dụng không."""
         try:
             req = urllib.request.Request(GITHUB_API_RELEASE, headers={"User-Agent": "SolveX-App-Updater"})
             with urllib.request.urlopen(req, timeout=8) as resp:
                 if resp.status == 200:
                     data = json.loads(resp.read().decode("utf-8"))
                     assets = data.get("assets", [])
+                    # 1. Tìm bản Installer / Setup nếu người dùng chọn cài đặt tiêu chuẩn
                     for asset in assets:
                         asset_url = asset.get("browser_download_url", "")
-                        if asset_url.endswith(".exe"):
+                        if "setup" in asset_url.lower() or "installer" in asset_url.lower():
+                            return asset_url
+
+                    # 2. Tìm bản Portable .exe độc lập
+                    for asset in assets:
+                        asset_url = asset.get("browser_download_url", "")
+                        if asset_url.lower().endswith(".exe"):
+                            return asset_url
+
+                    # 3. Tìm bản nén Zip thư mục ứng dụng (Non-Portable Onedir)
+                    for asset in assets:
+                        asset_url = asset.get("browser_download_url", "")
+                        if asset_url.lower().endswith(".zip") and "solvex" in asset_url.lower():
                             return asset_url
         except Exception:
             pass

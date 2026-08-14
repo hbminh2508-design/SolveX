@@ -70,12 +70,22 @@ class GeminiClient:
             "Content-Type": "application/json",
         }
 
-        try:
-            response = requests.post(url, headers=headers, json=payload, timeout=TIMEOUT)
-        except requests.Timeout:
-            raise GeminiError("Hết thời gian chờ. Mạng chậm hoặc file audio quá lớn.")
-        except requests.RequestException as exc:
-            raise GeminiError(f"Không kết nối được tới Gemini: {exc}")
+        # Tự động thử lại tối đa 2 lần khi gặp sự cố mạng chập chờn
+        response = None
+        last_exc = None
+        for attempt in range(2):
+            try:
+                response = requests.post(url, headers=headers, json=payload, timeout=TIMEOUT)
+                break
+            except requests.Timeout:
+                last_exc = "Hết thời gian chờ. Mạng chậm hoặc file audio quá lớn."
+            except requests.RequestException as exc:
+                last_exc = f"Không kết nối được tới Gemini: {exc}"
+            import time
+            time.sleep(1.0)
+
+        if response is None:
+            raise GeminiError(last_exc or "Không thể kết nối đến máy chủ Gemini.")
 
         if response.status_code != 200:
             raise GeminiError(self._explain_http_error(response))
@@ -193,8 +203,10 @@ class DualGeminiClient:
                     return res2
             elif res2 and not res2.startswith("Model 2 error"):
                 return res2
-            else:
+            elif res1 and not res1.startswith("Model 1 error"):
                 return res1
+            else:
+                raise GeminiError(f"Cả hai Model AI đều gặp sự cố:\n- {res1}\n- {res2}")
 
         elif self.mode == "turbo_plus":
             # 2. Chế độ Turbo+: Model 1 tạo đáp án sơ bộ -> Model 2 (thông minh hơn) kiểm chứng & tối ưu hóa bài giải

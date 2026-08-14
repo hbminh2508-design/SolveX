@@ -1,9 +1,24 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.17.0"
+APP_VERSION = "1.18.0"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.18.0",
+        "2026-08-14",
+        [
+            "Bổ sung phiên bản Non-Portable (Thư mục cài đặt / Onedir): Hỗ trợ cập nhật tức thì (0 compilation) — tải bản cập nhật về là ghi đè và sử dụng được ngay trong 1 giây mà không cần phải chạy PyInstaller build lại file mới.",
+            "Tăng cường độ ổn định toàn diện cho ứng dụng: Tích hợp ghi cấu hình nguyên tử (Atomic Write Config) chống hỏng file config.json khi tắt nguồn đột ngột, cơ chế tự động thử lại kết nối AI khi mạng chập chờn (Network Retry Backoff), và chuẩn hóa xử lý đa luồng.",
+            "🐛 [Vá Lỗi & Cải Thiện Độ Ổn Định Đã Khắc Phục]:",
+            "  • [Fix #1] Vá lỗi cập nhật đè bản cũ ở update.exe: Tự động xóa cache đồ thị biên dịch build/solvex_main và đồng bộ file thực thi vào đúng thư mục nơi update.exe đang chạy.",
+            "  • [Fix #2] Vá lỗi bóng cửa sổ khi chụp màn hình (capture.py & RegionSelector): Tự động ẩn hoàn toàn toàn bộ cửa sổ ứng dụng và thanh Toolbar trước khi chụp, đồng thời khôi phục mượt mà sau khi chọn xong.",
+            "  • [Fix #3] Vá lỗi gián đoạn mạng khi gọi API Gemini: Tự động thử lại tối đa 2 lần với backoff thông minh khi gặp timeout hoặc sự cố mạng chập chờn.",
+            "  • [Fix #4] Vá lỗi mất cấu hình config.json: Áp dụng ghi file tạm nguyên tử (Atomic Flush & Replace) và phân biệt thư mục lưu trữ giữa Portable và Non-Portable (%APPDATA%).",
+            "  • [Fix #5] Vá lỗi định dạng toán học & font chữ: Khử răng cưa tối đa, chống nhảy dòng khi hiển thị phân số x/y, căn bậc hai và vector.",
+            "  • [Fix #6] Khôi phục toàn bộ hệ thống biểu tượng Icon cổ điển v1.15.0 chuẩn mực, khắc phục các lỗi hiển thị không tương thích của phiên bản trước.",
+        ],
+    ),
     (
         "1.17.0",
         "2026-08-14",

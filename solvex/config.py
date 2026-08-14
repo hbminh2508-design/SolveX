@@ -57,8 +57,26 @@ DEFAULTS = {
 }
 
 
+def is_portable_mode() -> bool:
+    """Kiểm tra xem ứng dụng đang chạy ở chế độ Portable (cùng thư mục) hay Installed (APPDATA)."""
+    try:
+        app_dir = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
+        if (app_dir / "portable.dat").exists() or (app_dir / "config.json").exists():
+            return True
+    except Exception:
+        pass
+    return False
+
+
 def config_dir() -> Path:
-    """Thư mục lưu cấu hình, theo chuẩn từng hệ điều hành."""
+    """Thư mục lưu cấu hình, tự động hỗ trợ Portable và Non-Portable Installed chuẩn mực."""
+    try:
+        if is_portable_mode():
+            app_dir = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
+            return app_dir
+    except Exception:
+        pass
+
     if sys.platform == "win32":
         base = Path(os.environ.get("APPDATA") or Path.home())
     elif sys.platform == "darwin":
@@ -90,13 +108,24 @@ class Config:
             self.data = dict(DEFAULTS)
 
     def save(self):
+        """Lưu cấu hình an toàn nguyên tử (Atomic Write) chống hỏng file khi mất nguồn/tắt đột ngột."""
+        temp_path = self.path.with_suffix(".json.tmp")
         try:
-            with open(self.path, "w", encoding="utf-8") as f:
+            with open(temp_path, "w", encoding="utf-8") as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+
             if sys.platform != "win32":
-                os.chmod(self.path, 0o600)
+                os.chmod(temp_path, 0o600)
+
+            os.replace(temp_path, self.path)
         except OSError:
-            pass
+            try:
+                if temp_path.exists():
+                    temp_path.unlink()
+            except Exception:
+                pass
 
     def get(self, key, default=None):
         return self.data.get(key, DEFAULTS.get(key, default))
