@@ -132,12 +132,18 @@ class InstallMainWorker(QThread):
             # 2. CHẾ ĐỘ CẬP NHẬT SIÊU TỐC (1-SECOND FLASH UPDATE CHO CẢ PORTABLE & NON-PORTABLE):
             # Nếu đã có sẵn file .exe đóng gói sẵn hoặc file .zip gói ứng dụng, thay thế/giải nén trực tiếp trong 1 giây!
             if self.downloaded_exe_path and os.path.exists(self.downloaded_exe_path):
-                # 2A. File nén Zip chứa toàn bộ thư mục Non-Portable
+                # 2A. File nén Zip chứa toàn bộ thư mục Non-Portable (Bảo vệ chống Zip Slip / Path Traversal)
                 if self.downloaded_exe_path.lower().endswith(".zip"):
                     import zipfile
-                    self.progress_signal.emit(40, f"⚡ Đang giải nén gói cập nhật Non-Portable: {self.downloaded_exe_path}")
+                    self.progress_signal.emit(40, f"⚡ Đang giải nén gói cập nhật Non-Portable an toàn: {self.downloaded_exe_path}")
+                    target_abs = os.path.abspath(target_dir)
                     with zipfile.ZipFile(self.downloaded_exe_path, "r") as zf:
-                        zf.extractall(target_dir)
+                        for member in zf.infolist():
+                            # Kiểm tra đường dẫn thành phần không được vượt ra ngoài target_dir
+                            dest_path = os.path.abspath(os.path.join(target_abs, member.filename))
+                            if not (dest_path == target_abs or dest_path.startswith(target_abs + os.sep)):
+                                raise RuntimeError(f"Cảnh báo bảo mật: File nén chứa đường dẫn nguy hiểm ({member.filename})!")
+                            zf.extract(member, target_abs)
                     self.progress_signal.emit(100, f"✓ Cập nhật Non-Portable hoàn tất trong 1 giây! Thư mục ứng dụng: {target_dir}")
                     self.succeeded.emit(target_exe)
                     return

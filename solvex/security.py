@@ -104,10 +104,27 @@ def verify_pe_executable(file_path: str) -> bool:
         return False
 
 
+def sanitize_log_message(msg: str) -> str:
+    """Lọc và xóa sạch mọi chuỗi API Key bị rò rỉ trong log hoặc thông báo lỗi."""
+    if not msg:
+        return ""
+    import re
+    return re.sub(r'AIza[0-9A-Za-z\-_]{35}', 'AIza...[PROTECTED]', str(msg))
+
+
 def secure_file_permissions(file_path: Path):
-    """Giới hạn quyền truy cập file cấu hình chỉ dành riêng cho User hiện tại."""
+    """Giới hạn quyền truy cập file cấu hình chỉ dành riêng cho User hiện tại (chống credential sniffing)."""
     try:
-        if sys.platform != "win32":
+        if not file_path.exists():
+            return
+        if sys.platform == "win32":
+            import getpass
+            import subprocess
+            username = getpass.getuser()
+            # icacls: thu hồi kế thừa, chỉ cấp toàn quyền cho user hiện tại và SYSTEM
+            cmd = ["icacls", str(file_path), "/inheritance:r", "/grant:r", f"{username}:(F)", "/grant:r", "SYSTEM:(F)"]
+            subprocess.run(cmd, capture_output=True, timeout=2, creationflags=0x08000000 if hasattr(subprocess, "CREATE_NO_WINDOW") else 0)
+        else:
             os.chmod(file_path, 0o600)
     except Exception:
         pass

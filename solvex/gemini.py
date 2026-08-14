@@ -103,6 +103,9 @@ class GeminiClient:
         except ValueError:
             detail = response.text[:400]
 
+        from solvex.security import sanitize_log_message
+        detail = sanitize_log_message(detail)
+
         code = response.status_code
         if code == 400 and "API key" in detail:
             return "API key không hợp lệ. Kiểm tra lại key ở Google AI Studio."

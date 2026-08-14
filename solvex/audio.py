@@ -130,7 +130,9 @@ class Recorder:
                 "và thiết bị loa mặc định có đúng không."
             )
         samples = np.concatenate(self._chunks)
-        return to_wav_bytes(samples)
+        wav_data = to_wav_bytes(samples)
+        self._chunks.clear()
+        return wav_data
 
     @property
     def duration(self) -> float:

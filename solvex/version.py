@@ -1,9 +1,21 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.18.0"
+APP_VERSION = "1.19.0"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.19.0",
+        "2026-08-14",
+        [
+            "🔒 [Bảo Mật Cao Cấp] Vá lỗ hổng Zip Slip (Path Traversal Arbitrary File Write): Xác thực tuyệt đối đường dẫn file khi giải nén các gói cập nhật Non-Portable.",
+            "🔒 [Bảo Mật Cao Cấp] Chống rò rỉ API Key trong lỗi/log hệ thống: Tự động phát hiện và che giấu (mask) mọi chuỗi API Key trong thông báo lỗi và phản hồi HTTP.",
+            "🔒 [Bảo Mật Cao Cấp] Khóa quyền truy cập file cấu hình (Windows NTFS ACLs & POSIX 0o600): Chỉ cho phép User sở hữu đọc file config.json, chống credential sniffing trên máy dùng chung.",
+            "🛡️ [Vá Bug Nặng] Khử XSS & Script Injection trong kết quả: Tự động loại bỏ các thẻ HTML nguy hiểm (<script>, <iframe>, <embed>, javascript:) trước khi render.",
+            "🛡️ [Vá Bug Nặng] Triệt tiêu lỗi rò rỉ tiến trình & Runtime Crash khi thoát ứng dụng: Tự động dừng an toàn, hủy hook phím tắt và thu hồi tất cả background workers.",
+            "⚡ [Tối Ưu RAM] Giải phóng bộ nhớ đệm âm thanh tức thì: Thu hồi mảng numpy buffer ngay sau khi chuyển đổi định dạng WAV.",
+        ],
+    ),
     (
         "1.18.0",
         "2026-08-14",

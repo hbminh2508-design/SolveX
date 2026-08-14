@@ -680,8 +680,23 @@ window.MathJax = {
 """
 
 
+def _sanitize_html_content(html_str: str) -> str:
+    """Loại bỏ triệt để các thẻ HTML độc hại (XSS, Script Injection, Iframe, Embed) trước khi render."""
+    if not html_str:
+        return ""
+    # Loại bỏ thẻ script và nội dung bên trong
+    clean = re.sub(r'<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>', '', html_str, flags=re.IGNORECASE)
+    # Loại bỏ các thẻ nhúng đối tượng độc hại
+    clean = re.sub(r'<\/?(?:iframe|object|embed|applet|form|input|button|meta|link|base)[^>]*>', '', clean, flags=re.IGNORECASE)
+    # Loại bỏ javascript: schemes trong thuộc tính
+    clean = re.sub(r'(?:href|src|action)\s*=\s*["\']?\s*javascript:[^"\'>\s]*', 'href="#"', clean, flags=re.IGNORECASE)
+    clean = re.sub(r'on\w+\s*=\s*["\'][^"\']*["\']', '', clean, flags=re.IGNORECASE)
+    return clean
+
+
 def wrap_html_page(body_html: str, theme: str = "dark") -> str:
     css = style.get_chat_css(theme)
+    safe_body = _sanitize_html_content(body_html)
     return f"""<!DOCTYPE html>
 <html>
 <head>
@@ -690,7 +705,7 @@ def wrap_html_page(body_html: str, theme: str = "dark") -> str:
 {MATHJAX_SCRIPT}
 </head>
 <body>
-{body_html}
+{safe_body}
 </body>
 </html>"""
 
@@ -2770,7 +2785,25 @@ class MainWindow(QMainWindow):
         self.hide()
 
     def _shutdown(self):
-        if self.record_worker is not None and self.record_worker.isRunning():
-            self.record_worker.stop()
-            self.record_worker.wait(2000)
+        try:
+            if hasattr(self, "security_watcher") and self.security_watcher and self.security_watcher.isRunning():
+                self.security_watcher.stop()
+                self.security_watcher.wait(1000)
+
+            if self.record_worker is not None and self.record_worker.isRunning():
+                self.record_worker.stop()
+                self.record_worker.wait(1000)
+
+            if hasattr(self, "ask_worker") and self.ask_worker and self.ask_worker.isRunning():
+                self.ask_worker.terminate()
+                self.ask_worker.wait(500)
+
+            if hasattr(self, "capture_worker") and self.capture_worker and self.capture_worker.isRunning():
+                self.capture_worker.terminate()
+                self.capture_worker.wait(500)
+
+            if hasattr(self, "hotkeys") and self.hotkeys:
+                self.hotkeys.unregister_all()
+        except Exception:
+            pass
         self.on_save_settings()
