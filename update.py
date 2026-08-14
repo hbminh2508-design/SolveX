@@ -25,6 +25,8 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
+    QRadioButton,
+    QButtonGroup,
     QTextBrowser,
     QVBoxLayout,
     QWidget,
@@ -86,14 +88,17 @@ class InstallMainWorker(QThread):
     succeeded = pyqtSignal(str)              # (exe_path)
     failed = pyqtSignal(str)
 
-    def __init__(self, project_dir: str, downloaded_exe_path: str = None, parent=None):
+    def __init__(self, project_dir: str, downloaded_exe_path: str = None, mode: str = "portable", parent=None):
         super().__init__(parent)
         self.project_dir = project_dir
         self.downloaded_exe_path = downloaded_exe_path
+        self.mode = mode.lower()
 
     def run(self):
         try:
-            self.progress_signal.emit(5, "Đang khởi động tiến trình cài đặt siêu tốc (Flash Update)...")
+            is_nonportable = self.mode in ("nonportable", "onedir", "installed")
+            mode_label = "Non-Portable (Thư mục cài đặt Onedir)" if is_nonportable else "Portable (1 file .exe)"
+            self.progress_signal.emit(5, f"Đang khởi động tiến trình cài đặt {mode_label}...")
 
             # 1. Dừng an toàn tất cả các tiến trình SolveX.exe cũ
             self.progress_signal.emit(10, "Đang dừng tiến trình SolveX.exe cũ để giải phóng file hệ thống...")
@@ -104,12 +109,20 @@ class InstallMainWorker(QThread):
                     pass
             time.sleep(0.5)
 
-            target_dir = os.path.join(self.project_dir, "dist")
-            os.makedirs(target_dir, exist_ok=True)
-            target_exe = os.path.join(target_dir, "SolveX.exe")
+            if is_nonportable:
+                target_dir = os.path.join(self.project_dir, "dist", "SolveX")
+                target_exe = os.path.join(target_dir, "SolveX.exe")
+                build_cache_dir = os.path.join(self.project_dir, "build", "solvex_onedir")
+                spec_file = os.path.join(self.project_dir, "solvex_onedir.spec")
+            else:
+                target_dir = os.path.join(self.project_dir, "dist")
+                target_exe = os.path.join(target_dir, "SolveX.exe")
+                build_cache_dir = os.path.join(self.project_dir, "build", "solvex_main")
+                spec_file = os.path.join(self.project_dir, "solvex_main.spec")
 
-            # Xóa cache cũ trong build/solvex_main để bắt buộc PyInstaller đóng gói đúng phiên bản mới nhất từ mã nguồn
-            build_cache_dir = os.path.join(self.project_dir, "build", "solvex_main")
+            os.makedirs(target_dir, exist_ok=True)
+
+            # Xóa cache cũ để bắt buộc PyInstaller đóng gói đúng phiên bản mới nhất từ mã nguồn
             if os.path.exists(build_cache_dir):
                 try:
                     shutil.rmtree(build_cache_dir, ignore_errors=True)
@@ -149,8 +162,6 @@ class InstallMainWorker(QThread):
                     return
 
             # 3. CHẾ ĐỘ BIÊN DỊCH BỘ NHỚ ĐỆM TỐC ĐỘ CAO (FAST CACHED COMPILATION):
-            # Kiểm tra file spec riêng chỉ build SolveX.exe (solvex_main.spec)
-            spec_file = os.path.join(self.project_dir, "solvex_main.spec")
             if not os.path.exists(spec_file):
                 spec_file = os.path.join(self.project_dir, "solvex.spec")
 
@@ -429,10 +440,33 @@ class UpdaterWindow(QMainWindow):
         inst_layout.setContentsMargins(14, 10, 14, 10)
         inst_layout.setSpacing(4)
 
-        inst_hdr = QLabel("🛠 Tiến Độ Cài Đặt & Đóng Gói SolveX.exe:")
+        inst_hdr = QLabel("🛠 Cài Đặt & Đóng Gói SolveX:")
         inst_hdr.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
         inst_hdr.setStyleSheet("color: #10b981; border: none;")
         inst_layout.addWidget(inst_hdr)
+
+        # Chọn loại bản phát hành: Non-Portable Onedir vs Portable Onefile
+        edition_box = QHBoxLayout()
+        edition_box.setSpacing(16)
+        lbl_ed = QLabel("Định dạng:")
+        lbl_ed.setStyleSheet("color: #94a3b8; font-weight: bold; font-size: 11px;")
+
+        self.radio_nonportable = QRadioButton("📁 Bản Cài Đặt Tiêu Chuẩn (Non-Portable Onedir / Thư mục SolveX/ - Cập nhật 1s)")
+        self.radio_nonportable.setChecked(True)
+        self.radio_nonportable.setStyleSheet("color: #38bdf8; font-size: 11px; font-weight: 600;")
+
+        self.radio_portable = QRadioButton("📦 Bản Portable Độc Lập (1 file SolveX.exe duy nhất)")
+        self.radio_portable.setStyleSheet("color: #e2e8f0; font-size: 11px;")
+
+        self.edition_group = QButtonGroup(self)
+        self.edition_group.addButton(self.radio_nonportable)
+        self.edition_group.addButton(self.radio_portable)
+
+        edition_box.addWidget(lbl_ed)
+        edition_box.addWidget(self.radio_nonportable)
+        edition_box.addWidget(self.radio_portable)
+        edition_box.addStretch()
+        inst_layout.addLayout(edition_box)
 
         self.install_progress_bar = QProgressBar()
         self.install_progress_bar.setRange(0, 100)
@@ -682,8 +716,9 @@ class UpdaterWindow(QMainWindow):
 
         project_dir = find_project_dir()
         downloaded_exe = getattr(self, "downloaded_exe_path", None)
+        selected_mode = "nonportable" if hasattr(self, "radio_nonportable") and self.radio_nonportable.isChecked() else "portable"
 
-        self.install_worker = InstallMainWorker(project_dir, downloaded_exe)
+        self.install_worker = InstallMainWorker(project_dir, downloaded_exe, mode=selected_mode)
         self.install_worker.progress_signal.connect(self._on_install_progress)
         self.install_worker.succeeded.connect(self._on_install_success)
         self.install_worker.failed.connect(self._on_install_failed)
