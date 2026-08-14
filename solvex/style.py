@@ -323,32 +323,73 @@ def get_busy_stylesheet(theme: str = "dark") -> str:
 
 def get_chat_css(theme: str = "dark") -> str:
     p = get_palette(theme)
+    math_accent = "#38bdf8" if theme == "dark" else "#0284c7"
+    box_math_bg = "rgba(14, 165, 233, 0.08)" if theme == "dark" else "rgba(2, 132, 199, 0.06)"
+    box_result_bg = "rgba(245, 158, 11, 0.09)" if theme == "dark" else "rgba(217, 119, 6, 0.07)"
+
     return f"""
     body {{
         font-family: {FONT_FAMILY};
-        font-size: 13px;
+        font-size: 13.5px;
         color: {p["TEXT"]};
-        line-height: 1.6;
+        line-height: 1.65;
         margin: 0;
-        padding: 0;
+        padding: 4px;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
     }}
     h1, h2, h3, h4 {{
         color: {p["AMBER"]};
         margin-top: 14px;
         margin-bottom: 8px;
+        font-weight: 600;
+    }}
+    p {{
+        margin: 6px 0;
+    }}
+    b, strong {{
+        color: {p["TEXT"]};
+        font-weight: 600;
+    }}
+    .math-inline {{
+        font-family: "Cambria Math", "Segoe UI Symbol", "Noto Sans Math", serif;
+        font-size: 14px;
+        color: {math_accent};
+        font-weight: 500;
+        padding: 0 2px;
+    }}
+    .math-display {{
+        text-align: center;
+        margin: 10px 0;
+        padding: 8px 12px;
+        background-color: {box_math_bg};
+        border-left: 3px solid {p["TEAL"]};
+        border-radius: 6px;
+        font-family: "Cambria Math", "Segoe UI Symbol", "Noto Sans Math", serif;
+        font-size: 15px;
+        color: {math_accent};
+        font-weight: 600;
+    }}
+    blockquote {{
+        margin: 10px 0;
+        padding: 8px 14px;
+        background-color: {box_result_bg};
+        border-left: 3px solid {p["AMBER"]};
+        border-radius: 6px;
     }}
     code {{
         font-family: "Consolas", "Courier New", monospace;
         background-color: {p["INPUT_BG"]};
         color: {p["TEAL"]};
-        padding: 2px 5px;
+        padding: 2px 6px;
         border-radius: 4px;
+        font-size: 12.5px;
     }}
     pre {{
         background-color: {p["INPUT_BG"]};
         border: 1px solid {p["BORDER"]};
         border-radius: 8px;
-        padding: 10px;
+        padding: 10px 14px;
         overflow-x: auto;
     }}
     pre code {{
@@ -368,10 +409,12 @@ def get_chat_css(theme: str = "dark") -> str:
     th {{
         background-color: {p["CARD"]};
         color: {p["AMBER"]};
+        font-weight: 600;
     }}
     img.question-img {{
         border: 1px solid {p["BORDER"]};
         border-radius: 8px;
         margin-top: 6px;
+        max-width: 100%;
     }}
     """

@@ -41,11 +41,19 @@ def grab_monitor(index: int = 1) -> bytes:
 
 
 def grab_region(x: int, y: int, width: int, height: int) -> bytes:
-    """Chụp một vùng chữ nhật theo toạ độ pixel vật lý."""
-    if width < 2 or height < 2:
+    """Chụp một vùng chữ nhật theo toạ độ pixel vật lý với chuẩn hóa biên độ an toàn."""
+    if width < 5 or height < 5:
         raise CaptureError("Vùng chọn quá nhỏ.")
-    box = {"left": int(x), "top": int(y), "width": int(width), "height": int(height)}
     with mss.mss() as sct:
+        all_mon = sct.monitors[0]
+        left = max(all_mon["left"], int(x))
+        top = max(all_mon["top"], int(y))
+        right = min(all_mon["left"] + all_mon["width"], left + int(width))
+        bottom = min(all_mon["top"] + all_mon["height"], top + int(height))
+        w = max(5, right - left)
+        h = max(5, bottom - top)
+
+        box = {"left": left, "top": top, "width": w, "height": h}
         shot = sct.grab(box)
         return _to_png(shot.bgra, shot.size)
 

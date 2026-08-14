@@ -1,9 +1,18 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.16.0"
+APP_VERSION = "1.17.0"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.17.0",
+        "2026-08-14",
+        [
+            "Khôi phục trọn vẹn bộ Icon cổ điển ổn định của phiên bản 1.15.0 (Bộ icon đã được kiểm chứng hoạt động hoàn hảo và thân thuộc).",
+            "Nâng cấp bộ công cụ chụp màn hình (capture.py & RegionSelector): Tự động ẩn hoàn toàn toàn bộ cửa sổ ứng dụng và thanh toolbar khi chụp, tránh tình trạng bị bóng cửa sổ che mất nội dung cần quét.",
+            "Nâng cấp định dạng công thức toán học & Typography siêu sắc nét: Tối ưu CSS font rendering (-webkit-font-smoothing), hiển thị phân số, vector và công thức LaTeX theo dạng thẻ trực quan, dễ đọc và đẹp mắt nhất.",
+        ],
+    ),
     (
         "1.16.0",
         "2026-08-14",

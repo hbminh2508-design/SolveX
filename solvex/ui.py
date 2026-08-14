@@ -618,26 +618,16 @@ def _convert_math_expr(expr: str) -> str:
 
 
 def render_latex_math(text: str) -> str:
-    """Tự động phát hiện và chuyển đổi toàn bộ công thức LaTeX sang HTML native.
+    """Tự động phát hiện và chuyển đổi toàn bộ công thức LaTeX sang HTML native sắc nét.
     Hỗ trợ: $...$, $$...$$, \\(...\\), \\[...\\]"""
     if not text:
         return ""
-
-    MATH_STYLE_INLINE = (
-        "font-family:\"Cambria Math\", \"Times New Roman\", serif; "
-        "font-size:14px; color:#0ea5e9; font-weight:600;"
-    )
-    MATH_STYLE_DISPLAY = (
-        "text-align:center; margin:10px 0; "
-        "font-family:\"Cambria Math\", \"Times New Roman\", serif; "
-        "font-size:15px; color:#0ea5e9; font-weight:bold;"
-    )
 
     # Display math: $$...$$ (multiline)
     def display_repl(match):
         inner = match.group(1)
         conv = _convert_math_expr(inner)
-        return f"<div style='{MATH_STYLE_DISPLAY}'>{conv}</div>"
+        return f"<div class='math-display'>{conv}</div>"
 
     text = re.sub(r'\$\$(.*?)\$\$', display_repl, text, flags=re.DOTALL)
 
@@ -648,7 +638,7 @@ def render_latex_math(text: str) -> str:
     def inline_repl(match):
         inner = match.group(1)
         conv = _convert_math_expr(inner)
-        return f"<span style='{MATH_STYLE_INLINE}'>{conv}</span>"
+        return f"<span class='math-inline'>{conv}</span>"
 
     text = re.sub(r'\$([^\$\n]+?)\$', inline_repl, text)
 
@@ -803,8 +793,9 @@ class UpdateProgressDialog(QDialog):
 class RegionSelector(QWidget):
     region_selected = pyqtSignal(int, int, int, int)
 
-    def __init__(self):
+    def __init__(self, on_close_callback=None):
         super().__init__()
+        self.on_close_callback = on_close_callback
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
@@ -874,6 +865,13 @@ class RegionSelector(QWidget):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape:
             self.close()
+
+    def closeEvent(self, event):
+        if callable(self.on_close_callback):
+            cb = self.on_close_callback
+            self.on_close_callback = None
+            cb()
+        super().closeEvent(event)
 
 
 class CaptionButton(QPushButton):
@@ -2325,10 +2323,13 @@ class MainWindow(QMainWindow):
     # ------------------ Ẩn Cửa Sổ Khi Chụp Màn Hình ------------------
     def on_pick_region(self):
         hidden = self._hide_for_capture()
-        self.selector = RegionSelector()
+
+        def _on_done():
+            self._restore_after_capture(hidden)
+
+        self.selector = RegionSelector(on_close_callback=_on_done)
         self.selector.region_selected.connect(self._on_region_selected)
-        QTimer.singleShot(300, self.selector.showFullScreen)
-        QTimer.singleShot(350, lambda: self._restore_after_capture(hidden))
+        QTimer.singleShot(150, self.selector.showFullScreen)
 
     def _on_region_selected(self, x, y, w, h):
         self.config.set("region", [x, y, w, h])
@@ -2343,17 +2344,17 @@ class MainWindow(QMainWindow):
         if self.isVisible():
             self.hide()
             hidden.append(self)
-        if self.toolbar.isVisible():
+        if hasattr(self, "toolbar") and self.toolbar and self.toolbar.isVisible():
             self.toolbar.hide()
             hidden.append(self.toolbar)
-        for _ in range(6):
+        for _ in range(8):
             QApplication.processEvents()
         return hidden
 
     def _restore_after_capture(self, hidden: list):
         for widget in hidden:
             widget.show()
-        if self.toolbar in hidden:
+        if hasattr(self, "toolbar") and self.toolbar in hidden:
             self.toolbar.raise_()
 
     def _async_take_screenshot(self, callback):
@@ -2361,10 +2362,24 @@ class MainWindow(QMainWindow):
         mode = "region" if source == -1 else "monitor"
         region = self.config.get("region") if source == -1 else None
 
-        self.capture_worker = CaptureWorker(mode, source, region)
-        self.capture_worker.succeeded.connect(callback)
-        self.capture_worker.failed.connect(lambda err: self._error("Chụp ảnh lỗi", err))
-        self.capture_worker.start()
+        hidden = self._hide_for_capture()
+
+        def _on_success(png_bytes):
+            self._restore_after_capture(hidden)
+            callback(png_bytes)
+
+        def _on_fail(err):
+            self._restore_after_capture(hidden)
+            self._error("Chụp ảnh lỗi", err)
+
+        def _start_worker():
+            self.capture_worker = CaptureWorker(mode, source, region)
+            self.capture_worker.succeeded.connect(_on_success)
+            self.capture_worker.failed.connect(_on_fail)
+            self.capture_worker.start()
+
+        # Cho phép Windows DWM compositor hoàn tất ẩn cửa sổ trước khi chụp desktop
+        QTimer.singleShot(120, _start_worker)
 
     # ------------------ Tự Động Tùy Chỉnh Prompt Theo Chế Độ Học Tập ------------------
     def _get_active_prompt(self, base_prompt: str) -> str:
