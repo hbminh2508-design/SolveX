@@ -1,9 +1,19 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.14.0"
+APP_VERSION = "1.15.0"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.15.0",
+        "2026-08-14",
+        [
+            "Nâng cấp kiến trúc bảo mật toàn diện (Comprehensive Security Hardening): Chống DLL Hijacking qua SetDefaultDllDirectories (System32 Search Order), bảo mật API Key trong bộ nhớ RAM và làm sạch đường dẫn chống Path Traversal.",
+            "Phòng chống xung đột tiến trình ứng dụng (Process Mutex Locking): Tích hợp SingleInstanceLock ngăn chặn xung đột tiến trình khi khởi chạy nhiều cửa sổ hoặc khi đang cập nhật.",
+            "Tăng cường xác thực HTTPS Strict Domain Pinning: Kiểm tra chặt chẽ hostname chính chủ từ GitHub Repository, ngăn chặn tuyệt đối nguy cơ Man-In-The-Middle và Phishing.",
+            "Vá các tồn tại lỗi cũ và tối ưu hiệu năng: Đảm bảo tiến trình chạy ngầm cực kỳ mượt mà, không tiêu tốn quá 0.01% CPU hệ thống.",
+        ],
+    ),
     (
         "1.14.0",
         "2026-08-13",

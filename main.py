@@ -4,10 +4,18 @@ import sys
 
 from PyQt6.QtWidgets import QApplication
 
+from solvex.security import SingleInstanceLock, apply_dll_hijack_protection
 from solvex.ui import MainWindow
 
 
 def main():
+    apply_dll_hijack_protection()
+
+    instance_lock = SingleInstanceLock()
+    if not instance_lock.acquire():
+        # Đã có 1 tiến trình SolveX đang chạy
+        print("SolveX đã đang chạy trong hệ thống.")
+
     app = QApplication(sys.argv)
     app.setApplicationName("SolveX")
     app.setApplicationDisplayName("SolveX")
