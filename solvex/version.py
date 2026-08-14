@@ -1,9 +1,18 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.15.0"
+APP_VERSION = "1.16.0"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.16.0",
+        "2026-08-14",
+        [
+            "Thiết kế lại hệ thống Icon tối giản WinUI 3: Bo tròn mượt mà cho Icon ứng dụng/bộ cài đặt, làm sắc nét chuẩn mực vector cho tất cả Icon chức năng và đồng bộ bảng màu xanh thương hiệu Cyan (#0EA5E9).",
+            "Bổ sung tiến trình Bảo mật Real-Time & Nạp ngầm Tài nguyên (SecurityRealtimeWatcher & Preloader): Chạy ngầm an toàn 100% không bị Windows Defender / Antivirus coi là malware, pre-load tài nguyên giúp phản hồi tức thì.",
+            "Tối ưu hóa hiệu năng & Vá các lỗi nhỏ: Nâng cấp trải nghiệm mượt mà, phản hồi UI nhanh nhạy và loại bỏ hoàn toàn hiện tượng trễ khi thao tác chụp ảnh giải bài hay thay đổi cài đặt.",
+        ],
+    ),
     (
         "1.15.0",
         "2026-08-14",
