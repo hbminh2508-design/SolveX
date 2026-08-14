@@ -108,11 +108,30 @@ class InstallMainWorker(QThread):
             os.makedirs(target_dir, exist_ok=True)
             target_exe = os.path.join(target_dir, "SolveX.exe")
 
+            # Xóa cache cũ trong build/solvex_main để bắt buộc PyInstaller đóng gói đúng phiên bản mới nhất từ mã nguồn
+            build_cache_dir = os.path.join(self.project_dir, "build", "solvex_main")
+            if os.path.exists(build_cache_dir):
+                try:
+                    shutil.rmtree(build_cache_dir, ignore_errors=True)
+                except Exception:
+                    pass
+
             # 2. CHẾ ĐỘ CẬP NHẬT SIÊU TỐC (1-SECOND FLASH UPDATE):
             # Nếu đã có sẵn file .exe đóng gói sẵn (tải từ GitHub Releases Assets hoặc local), thay thế trực tiếp trong 1 giây!
             if self.downloaded_exe_path and os.path.exists(self.downloaded_exe_path) and verify_pe_executable(self.downloaded_exe_path):
                 self.progress_signal.emit(50, f"⚡ Áp dụng Cập Nhật Siêu Tốc 1 giây từ file thực thi: {self.downloaded_exe_path}")
                 shutil.copy2(self.downloaded_exe_path, target_exe)
+
+                # Copy đồng thời sang thư mục nơi update.exe đang chạy (nếu khác dist)
+                if getattr(sys, "frozen", False):
+                    running_dir = os.path.dirname(sys.executable)
+                    if running_dir and running_dir != target_dir:
+                        dest_exe = os.path.join(running_dir, "SolveX.exe")
+                        try:
+                            shutil.copy2(self.downloaded_exe_path, dest_exe)
+                        except Exception:
+                            pass
+
                 self.progress_signal.emit(100, f"✓ Cài đặt hoàn tất trong 1 giây! File thực thi sẵn sàng: {target_exe}")
                 self.succeeded.emit(target_exe)
                 return
@@ -142,9 +161,9 @@ class InstallMainWorker(QThread):
                 else:
                     cmd = [sys.executable, "-m", "PyInstaller", "--noconfirm", spec_file]
 
-            self.progress_signal.emit(20, f"⚡ Biên dịch bộ nhớ đệm siêu tốc: {' '.join(cmd)}")
+            self.progress_signal.emit(20, f"⚡ Biên dịch phiên bản mới siêu tốc: {' '.join(cmd)}")
 
-            # Khởi chạy PyInstaller với bộ nhớ đệm cache reuse
+            # Khởi chạy PyInstaller
             proc = subprocess.Popen(
                 cmd,
                 cwd=self.project_dir,
@@ -175,9 +194,19 @@ class InstallMainWorker(QThread):
             proc.wait()
 
             if proc.returncode == 0:
+                # Copy đồng thời sang thư mục nơi update.exe đang chạy (nếu update.exe đặt ở vị trí khác)
+                if getattr(sys, "frozen", False):
+                    running_dir = os.path.dirname(sys.executable)
+                    if running_dir and running_dir != target_dir and os.path.exists(target_exe):
+                        dest_exe = os.path.join(running_dir, "SolveX.exe")
+                        try:
+                            shutil.copy2(target_exe, dest_exe)
+                        except Exception:
+                            pass
+
                 # 4. Xác thực an toàn PE header (MZ) cho file SolveX.exe mới build
                 if verify_pe_executable(target_exe):
-                    self.progress_signal.emit(100, f"✓ Cài đặt hoàn tất! File thực thi đã được kiểm tra an toàn: {target_exe}")
+                    self.progress_signal.emit(100, f"✓ Cài đặt thành công phiên bản mới! File thực thi sẵn sàng: {target_exe}")
                     self.succeeded.emit(target_exe)
                 else:
                     self.failed.emit(f"File thực thi {target_exe} không vượt qua kiểm tra an toàn binary PE (MZ Header)!")
