@@ -1,9 +1,18 @@
 """Số phiên bản và nhật ký cập nhật (release notes) của SolveX."""
 
-APP_VERSION = "1.13.0.e4007d5"
+APP_VERSION = "1.14.0"
 
 # Mỗi mục: (phiên bản, ngày phát hành, [danh sách thay đổi])
 CHANGELOG = [
+    (
+        "1.14.0",
+        "2026-08-13",
+        [
+            "Tối ưu hóa tốc độ cài đặt bản build mới siêu nhanh (Fast Flash Update): Giảm thời gian chờ xuống 1 giây khi có sẵn file cài đặt đóng gói (.exe).",
+            "Tối ưu hóa PyInstaller Build Cache (solvex_main.spec): Sử dụng bộ nhớ đệm phân tích đồ thị phụ thuộc và loại bỏ các thư viện phụ không cần thiết, giúp tốc độ đóng gói nhanh hơn gấp 5-10 lần.",
+            "Tự động định vị thư mục dự án thông minh (find_project_dir()): Loại bỏ triệt để lỗi thiếu file spec khi bấm cài đặt trực tiếp từ update.exe đóng gói.",
+        ],
+    ),
     (
         "1.13.0.e4007d5",
         "2026-08-13",

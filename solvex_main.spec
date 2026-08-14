@@ -34,7 +34,16 @@ a_main = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["tkinter", "matplotlib", "scipy", "pandas", "PyQt5", "PySide6"],
+    excludes=[
+        "tkinter",
+        "matplotlib",
+        "scipy",
+        "pandas",
+        "PyQt5",
+        "PySide6",
+        "unittest",
+        "test",
+    ],
     noarchive=False,
 )
 

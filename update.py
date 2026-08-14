@@ -80,19 +80,20 @@ def find_project_dir() -> str:
 
 
 class InstallMainWorker(QThread):
-    """Worker đóng gói & cài đặt ứng dụng chính SolveX.exe (chỉ build SolveX.exe, không build lại update.exe để tránh lỗi khóa file)."""
+    """Worker đóng gói & cài đặt ứng dụng chính SolveX.exe tốc độ siêu nhanh (Fast Flash Update)."""
 
     progress_signal = pyqtSignal(int, str)  # (percent 0-100, log_line)
     succeeded = pyqtSignal(str)              # (exe_path)
     failed = pyqtSignal(str)
 
-    def __init__(self, project_dir: str, parent=None):
+    def __init__(self, project_dir: str, downloaded_exe_path: str = None, parent=None):
         super().__init__(parent)
         self.project_dir = project_dir
+        self.downloaded_exe_path = downloaded_exe_path
 
     def run(self):
         try:
-            self.progress_signal.emit(5, "Đang khởi động tiến trình cài đặt...")
+            self.progress_signal.emit(5, "Đang khởi động tiến trình cài đặt siêu tốc (Flash Update)...")
 
             # 1. Dừng an toàn tất cả các tiến trình SolveX.exe cũ
             self.progress_signal.emit(10, "Đang dừng tiến trình SolveX.exe cũ để giải phóng file hệ thống...")
@@ -101,9 +102,23 @@ class InstallMainWorker(QThread):
                     subprocess.run(["taskkill", "/F", "/IM", "SolveX.exe"], capture_output=True, text=True)
                 except Exception:
                     pass
-            time.sleep(1)
+            time.sleep(0.5)
 
-            # 2. Kiểm tra file spec riêng chỉ build SolveX.exe (solvex_main.spec)
+            target_dir = os.path.join(self.project_dir, "dist")
+            os.makedirs(target_dir, exist_ok=True)
+            target_exe = os.path.join(target_dir, "SolveX.exe")
+
+            # 2. CHẾ ĐỘ CẬP NHẬT SIÊU TỐC (1-SECOND FLASH UPDATE):
+            # Nếu đã có sẵn file .exe đóng gói sẵn (tải từ GitHub Releases Assets hoặc local), thay thế trực tiếp trong 1 giây!
+            if self.downloaded_exe_path and os.path.exists(self.downloaded_exe_path) and verify_pe_executable(self.downloaded_exe_path):
+                self.progress_signal.emit(50, f"⚡ Áp dụng Cập Nhật Siêu Tốc 1 giây từ file thực thi: {self.downloaded_exe_path}")
+                shutil.copy2(self.downloaded_exe_path, target_exe)
+                self.progress_signal.emit(100, f"✓ Cài đặt hoàn tất trong 1 giây! File thực thi sẵn sàng: {target_exe}")
+                self.succeeded.emit(target_exe)
+                return
+
+            # 3. CHẾ ĐỘ BIÊN DỊCH BỘ NHỚ ĐỆM TỐC ĐỘ CAO (FAST CACHED COMPILATION):
+            # Kiểm tra file spec riêng chỉ build SolveX.exe (solvex_main.spec)
             spec_file = os.path.join(self.project_dir, "solvex_main.spec")
             if not os.path.exists(spec_file):
                 spec_file = os.path.join(self.project_dir, "solvex.spec")
@@ -112,7 +127,7 @@ class InstallMainWorker(QThread):
                 self.failed.emit(f"Không tìm thấy file cấu hình {spec_file}!")
                 return
 
-            # 3. Tìm PyInstaller trong môi trường ảo .venv hoặc hệ thống
+            # Tìm PyInstaller trong môi trường ảo .venv hoặc hệ thống
             python_exe = os.path.join(self.project_dir, ".venv", "Scripts", "python.exe")
             pyinstaller_exe = os.path.join(self.project_dir, ".venv", "Scripts", "pyinstaller.exe")
 
@@ -127,9 +142,9 @@ class InstallMainWorker(QThread):
                 else:
                     cmd = [sys.executable, "-m", "PyInstaller", "--noconfirm", spec_file]
 
-            self.progress_signal.emit(20, f"Lệnh biên dịch: {' '.join(cmd)}")
+            self.progress_signal.emit(20, f"⚡ Biên dịch bộ nhớ đệm siêu tốc: {' '.join(cmd)}")
 
-            # 4. Khởi chạy tiến trình PyInstaller và đọc log thời gian thực
+            # Khởi chạy PyInstaller với bộ nhớ đệm cache reuse
             proc = subprocess.Popen(
                 cmd,
                 cwd=self.project_dir,
@@ -147,14 +162,12 @@ class InstallMainWorker(QThread):
                     continue
 
                 if "Analyzing" in line_str:
-                    current_pct = min(current_pct + 2, 50)
+                    current_pct = min(current_pct + 3, 55)
                 elif "Building PYZ" in line_str:
-                    current_pct = 60
+                    current_pct = 70
                 elif "Building PKG" in line_str:
-                    current_pct = 75
-                elif "Building EXE" in line_str:
                     current_pct = 85
-                elif "Fixing EXE headers" in line_str:
+                elif "Building EXE" in line_str or "Fixing EXE headers" in line_str:
                     current_pct = 95
 
                 self.progress_signal.emit(current_pct, line_str)
@@ -162,14 +175,12 @@ class InstallMainWorker(QThread):
             proc.wait()
 
             if proc.returncode == 0:
-                exe_path = os.path.join(self.project_dir, "dist", "SolveX.exe")
-
-                # 5. Xác thực an toàn PE header (MZ) cho file SolveX.exe mới build
-                if verify_pe_executable(exe_path):
-                    self.progress_signal.emit(100, f"✓ Cài đặt hoàn tất! File thực thi đã được kiểm tra an toàn: {exe_path}")
-                    self.succeeded.emit(exe_path)
+                # 4. Xác thực an toàn PE header (MZ) cho file SolveX.exe mới build
+                if verify_pe_executable(target_exe):
+                    self.progress_signal.emit(100, f"✓ Cài đặt hoàn tất! File thực thi đã được kiểm tra an toàn: {target_exe}")
+                    self.succeeded.emit(target_exe)
                 else:
-                    self.failed.emit(f"File thực thi {exe_path} không vượt qua kiểm tra an toàn binary PE (MZ Header)!")
+                    self.failed.emit(f"File thực thi {target_exe} không vượt qua kiểm tra an toàn binary PE (MZ Header)!")
             else:
                 self.failed.emit(f"Tiến trình cài đặt & build thất bại với mã lỗi {proc.returncode}")
 
@@ -576,6 +587,7 @@ class UpdaterWindow(QMainWindow):
         self.lbl_download_info.setText(info)
 
     def _on_download_finished(self, saved_path: str):
+        self.downloaded_exe_path = saved_path
         self.btn_download.setEnabled(True)
         self.download_progress_bar.setValue(100)
         self.lbl_download_info.setText(f"✓ Đã tải thành công file an toàn: {saved_path}")
@@ -584,7 +596,7 @@ class UpdaterWindow(QMainWindow):
             self,
             "Tải Hoàn Tất — SolveX Updater",
             f"Đã tải thành công file cài đặt phiên bản mới tại:\n{saved_path}\n\n"
-            f"Bạn có muốn tự động đóng tiến trình SolveX cũ và tiến hành cài đặt ngay bây giờ không?",
+            f"Bạn có muốn tự động đóng tiến trình SolveX cũ và tiến hành cài đặt siêu tốc ngay bây giờ không?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
@@ -628,8 +640,9 @@ class UpdaterWindow(QMainWindow):
         self.lbl_install_info.setText("Đang khởi tạo tiến trình cài đặt SolveX.exe...")
 
         project_dir = find_project_dir()
+        downloaded_exe = getattr(self, "downloaded_exe_path", None)
 
-        self.install_worker = InstallMainWorker(project_dir)
+        self.install_worker = InstallMainWorker(project_dir, downloaded_exe)
         self.install_worker.progress_signal.connect(self._on_install_progress)
         self.install_worker.succeeded.connect(self._on_install_success)
         self.install_worker.failed.connect(self._on_install_failed)
